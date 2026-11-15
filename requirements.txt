@@ -1,0 +1,12 @@
+pdfplumber
+pypdfium2
+pytesseract
+pillow
+sentence-transformers
+faiss-cpu
+pyyaml
+streamlit
+google-generativeai
+openai
+numpy
+rank-bm25

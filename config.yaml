@@ -1,0 +1,25 @@
+domain_name: "generic_multimodal_rag"   # change juste ce nom si tu changes de domaine, aucun code à toucher
+
+paths:
+  raw_pdf_dir: "data/raw"                # dépose ici n'importe quel(s) PDF (thèse papillons, oiseaux, docs admin...)
+  processed_dir: "data/processed"
+  images_dir: "data/processed/images"
+  index_dir: "index"
+
+chunking:
+  chunk_size: 220        # en mots
+  chunk_overlap: 40
+
+embeddings:
+  text_model: "sentence-transformers/all-MiniLM-L6-v2"   # rapide, gratuit, hors-ligne
+  clip_model: "clip-ViT-B-32"                            # pour retrouver des images à partir du texte de la question
+
+retrieval:
+  top_k_text: 5
+  top_k_images: 4
+  min_image_score: 0.30 # en dessous de ce score CLIP, aucune image n'est affichée (évite les images sans rapport)
+
+llm:
+  provider: "gemini"          # ou "openai"
+  model: "gemini-3.6-flash"   # modèle actif au moment du développement (les noms de modèles Gemini changent fréquemment côté fournisseur)
+  api_key_env: "GOOGLE_API_KEY"   # nom de la variable d'environnement à définir

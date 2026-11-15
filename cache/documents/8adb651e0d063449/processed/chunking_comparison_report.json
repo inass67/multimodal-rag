@@ -1,0 +1,38 @@
+{
+  "results": {
+    "fixed_small (100 mots / 20 overlap)": {
+      "nb_chunks_total": 60,
+      "longueur_moyenne_mots": 61.0,
+      "ecart_type_longueur": 38.1,
+      "similarite_intra": 0.3281,
+      "similarite_inter": 0.5893,
+      "score": -0.2612
+    },
+    "fixed_large (220 mots / 40 overlap)": {
+      "nb_chunks_total": 30,
+      "longueur_moyenne_mots": 103.4,
+      "ecart_type_longueur": 7.7,
+      "similarite_intra": 0.4351,
+      "similarite_inter": 0.7208,
+      "score": -0.2857
+    },
+    "by_sentence (5 phrases/chunk)": {
+      "nb_chunks_total": 30,
+      "longueur_moyenne_mots": 103.4,
+      "ecart_type_longueur": 7.7,
+      "similarite_intra": 0.4351,
+      "similarite_inter": 0.7208,
+      "score": -0.2857
+    },
+    "recursive_like (para->phrase, ~180 mots)": {
+      "nb_chunks_total": 30,
+      "longueur_moyenne_mots": 103.4,
+      "ecart_type_longueur": 7.7,
+      "similarite_intra": 0.4351,
+      "similarite_inter": 0.7208,
+      "score": -0.2857
+    }
+  },
+  "best_method": "fixed_small (100 mots / 20 overlap)",
+  "note": "Recall@k / Precision@k / F1-score non calculés : nécessitent une vérité terrain annotée manuellement."
+}
