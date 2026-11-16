@@ -3,5 +3,10 @@
     "salt": "2566f5856730a50c",
     "password_hash": "6cf4d02733f5556275edd2adad746549425f1c0876822d1deb0d5e89a21486d1",
     "full_name": "KHADIJA BOUNAJI"
+  },
+  "mourid": {
+    "salt": "7f137a35d2be41c0",
+    "password_hash": "5e2cbc263ef9350bfab90b822b1e4a1370d9ad08fef34b64c96caab6ff32c64a",
+    "full_name": "inas"
   }
 }

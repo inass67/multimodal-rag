@@ -4,3 +4,7 @@ env/
 __pycache__/
 .env
 *.pyc
+
+test_gemini.py
+test2.py
+test3.py

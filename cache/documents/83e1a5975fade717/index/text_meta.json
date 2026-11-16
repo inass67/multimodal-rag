@@ -1,0 +1,362 @@
+[
+  {
+    "id": 0,
+    "type": "text",
+    "content": "TRAVAUX PRATIQUES — ECOSYSTEME BIG DATA 2\nTP3 : Analyse de ventes e-commerce avec Spark\nSQL\nNettoyage, typage, jointures, agrégations, fonctions de fenêtre et optimisation Catalyst\nEnvironnement : Jupyter (Docker jupyter/pyspark-notebook) — Spark 4.0.0 — Année universitaire\n2026/2027\nPartie 0 – Génération des données\nCode\nimport os, csv, json, random\nfrom datetime import date, timedelta\nrandom.seed(42)\nos.makedirs(\"data_tp2\", exist_ok=True)\n# ---------- produits.csv ----------\ncatalogue = {\n\"Informatique\": [\"Clavier\", \"Souris\", \"Ecran\", \"Casque\", \"Webcam\"],\n\"Maison\": [\"Lampe\", \"Chaise\", \"Bureau\", \"Etagere\"],\n\"Sport\": [\"Ballon\", \"Raquette\", \"Tapis de yoga\", \"Haltères\"],\n}\nproduits_l, pid = [], 1\nfor cat, noms in catalogue.items():\nfor n in noms:\nproduits_l.append([pid, n, cat, random.choice([49, 79, 99, 149, 249, 399, 599])])\npid += 1\nproduits_l[3][3] = \"N/A\" # prix invalide (produit 4)\nwith open(\"data_tp2/produits.csv\", \"w\", newline=\"\", encoding=\"utf-8\") as f:\nw = csv.writer(f)\nw.writerow([\"id_produit\", \"nom\", \"categorie\", \"prix\"])\nw.writerows(produits_l)\n# ---------- clients.json (un objet JSON par ligne) ----------\nvilles = [\"Casablanca\", \"Rabat\", \"Fès\", \"Marrakech\", \"Tanger\", \"Agadir\"]\nprenoms = [\"Sara\", \"Youssef\", \"Imane\", \"Omar\", \"Salma\",\n\"Hamza\", \"Khadija\", \"Anas\", \"Meryem\", \"Ayoub\"]\nfamilles = [\"Alaoui\", \"Benani\", \"Cherkaoui\", \"Darif\", \"El Idrissi\", \"Fassi\", \"Tazi\"]\nwith open(\"data_tp2/clients.json\", \"w\", encoding=\"utf-8\") as f:\nfor i in range(1, 61):\nville = random.choice(villes)\nif i % 7 == 0:\nville = \" \" + ville.upper() + \" \" # ville mal saisie\nc = {\"id_client\": i,\n\"nom\": random.choice(prenoms) + \" \" + random.choice(familles),\n\"ville\": ville,\n\"date_inscription\": (date(2024, 1, 1)\n+ timedelta(days=random.randint(0, 364))).isoformat()}\nf.write(json.dumps(c, ensure_ascii=False) + \"\\n\")\n# ---------- commandes.csv ----------\nstatuts = [\"livree\", \"livree\", \"livree\", \"annulee\", \"en_cours\", \"Livree\", \"LIVREE \"]\ncmd = []\nfor i in range(1, 3001):\nd = date(2025, 1, 1) + timedelta(days=random.randint(0, 364))\ncmd.append([i, random.randint(1, 54), random.randint(1, 13),\nrandom.randint(1, 5), d.isoformat(), random.choice(statuts)])\nfor k in range(0, 3000, 150): cmd[k][3] = \"abc\" # quantité invalide\nfor k in range(5, 3000, 200): cmd[k][3] = -2 # quantité négative\nfor k in range(10, 3000, 300): cmd[k][4] = \"\" # date manquante\nfor k in range(20, 3000, 500): cmd[k][1] = \"\" # client manquant\ncmd += random.sample(cmd, 40) # doublons exacts\nwith open(\"data_tp2/commandes.csv\", \"w\", newline=\"\", encoding=\"utf-8\") as f:\nw = csv.writer(f)\nw.writerow([\"id_commande\", \"id_client\", \"id_produit\",\n\"quantite\", \"date_commande\", \"statut\"])\nw.writerows(cmd)\nprint(sorted(os.listdir(\"data_tp2\")))\nSortie\n['clients.json', 'commandes.csv', 'produits.csv']\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 1",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 1,
+    "type": "text",
+    "content": "Partie 1 – Chargement avec schéma explicite\nQuestion 1.1\nCréer une SparkSession (appName « TP2 - Ventes », master local[*], spark.sql.shuffle.partitions = 8) ;\nimporter functions (F) et Window. Code\nfrom pyspark.sql import SparkSession\nfrom pyspark.sql import functions as F\nfrom pyspark.sql.window import Window\n# try_cast qui marche sur Spark 3.5 et Spark 4 :\n# renvoie null au lieu d'une erreur si la conversion est impossible\ndef try_cast(col_name, type_name):\nreturn F.expr(f\"try_cast({col_name} AS {type_name})\")\nspark = (SparkSession.builder\n.appName(\"TP2 - Ventes\")\n.master(\"local[*]\")\n.config(\"spark.sql.shuffle.partitions\", \"8\")\n.getOrCreate())\nprint(\"Version de Spark :\", spark.version)\nSortie\nVersion de Spark : 4.0.0\nQuestion 1.2\nCharger produits_raw, clients_raw et commandes_raw (CSV avec schéma explicite tout en STRING) ; afficher\nschéma, 5 lignes et nombre de lignes. Code\nproduits_raw = (spark.read\n.option(\"header\", True)\n.schema(\"id_produit STRING, nom STRING, categorie STRING, prix STRING\")\n.csv(\"data_tp2/produits.csv\"))\ncommandes_raw = (spark.read\n.option(\"header\", True)\n.schema(\"id_commande STRING, id_client STRING, id_produit STRING, \"\n\"quantite STRING, date_commande STRING, statut STRING\")\n.csv(\"data_tp2/commandes.csv\"))\nclients_raw = spark.read.json(\"data_tp2/clients.json\")\nfor nom, df in [(\"produits_raw\", produits_raw),\n(\"clients_raw\", clients_raw),\n(\"commandes_raw\", commandes_raw)]:\nprint(f\"===== {nom} =====\")\ndf.printSchema()\ndf.show(5, truncate=False)\nprint(\"Nombre de lignes :\", df.count(), \"\\n\")\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 2",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 2,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 2,
+    "type": "text",
+    "content": "Sortie\n===== produits_raw =====\nroot\n|-- id_produit: string (nullable = true)\n|-- nom: string (nullable = true)\n|-- categorie: string (nullable = true)\n|-- prix: string (nullable = true)\n+----------+-------+------------+----+\n|id_produit|nom |categorie |prix|\n+----------+-------+------------+----+\n|1 |Clavier|Informatique|399 |\n|2 |Souris |Informatique|49 |\n|3 |Ecran |Informatique|49 |\n|4 |Casque |Informatique|N/A |\n|5 |Webcam |Informatique|99 |\n+----------+-------+------------+----+\nonly showing top 5 rows\nNombre de lignes : 13\n===== clients_raw =====\nroot\n|-- date_inscription: string (nullable = true)\n|-- id_client: long (nullable = true)\n|-- nom: string (nullable = true)\n|-- ville: string (nullable = true)\n+----------------+---------+---------------+----------+\n|date_inscription|id_client|nom |ville |\n+----------------+---------+---------------+----------+\n|2024-01-17 |1 |Ayoub Darif |Casablanca|\n|2024-04-29 |2 |Youssef Benani |Casablanca|\n|2024-10-14 |3 |Ayoub Alaoui |Tanger |\n|2024-04-22 |4 |Meryem Darif |Rabat |\n|2024-01-04 |5 |Ayoub Cherkaoui|Marrakech |\n+----------------+---------+---------------+----------+\nonly showing top 5 rows\nNombre de lignes : 60\n===== commandes_raw =====\nroot\n|-- id_commande: string (nullable = true)\n|-- id_client: string (nullable = true)\n|-- id_produit: string (nullable = true)\n|-- quantite: string (nullable = true)\n|-- date_commande: string (nullable = true)\n|-- statut: string (nullable = true)\n+-----------+---------+----------+--------+-------------+-------+\n|id_commande|id_client|id_produit|quantite|date_commande|statut |\n+-----------+---------+----------+--------+-------------+-------+\n|1 |51 |8 |abc |2025-05-05 |livree |\n|2 |7 |11 |4 |2025-02-18 |livree |\n|3 |27 |8 |1 |2025-08-05 |Livree |\n|4 |42 |2 |1 |2025-12-01 |annulee|\n|5 |52 |2 |2 |2025-06-23 |livree |\n+-----------+---------+----------+--------+-------------+-------+\nonly showing top 5 rows\nNombre de lignes : 3040\nPartie 2 – Audit de la qualité des données\nQuestion 2.1\nNombre de valeurs manquantes (null ou vide après trim) par colonne de commandes_raw, en une seule\nrequête. Code\nmanquants = commandes_raw.select([\nF.count(F.when(F.col(c).isNull() | (F.trim(F.col(c)) == \"\"), 1)).alias(c)\nfor c in commandes_raw.columns\n])\nmanquants.show()\nSortie\n+-----------+---------+----------+--------+-------------+------+\n|id_commande|id_client|id_produit|quantite|date_commande|statut|\n+-----------+---------+----------+--------+-------------+------+\n| 0| 7| 0| 0| 10| 0|\n+-----------+---------+----------+--------+-------------+------+\nRéponse : il manque 7 valeurs dans id_client et 10 dans date_commande ; les autres colonnes sont\ncomplètes. TP3 – Analyse de ventes e-commerce avec Spark SQL Page 3",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 3,
+    "type": "text",
+    "content": "Question 2.2\nNombre de doublons exacts ; valeurs distinctes de statut avec leurs effectifs. Que remarquez-vous ? Code\nnb_total = commandes_raw.count()\nnb_distinct = commandes_raw.dropDuplicates().count()\nprint(\"Doublons exacts :\", nb_total - nb_distinct)\ncommandes_raw.groupBy(\"statut\").count().orderBy(F.desc(\"count\")).show(truncate=False)\nSortie\nDoublons exacts : 40\n+--------+-----+\n|statut |count|\n+--------+-----+\n|livree |1260 |\n|annulee |476 |\n|Livree |465 |\n|LIVREE |426 |\n|en_cours|413 |\n+--------+-----+\nRéponse : il y a 40 doublons exacts. Le statut a 5 valeurs au lieu de 3 : « livree », « Livree » et « LIVREE »\nsont le même statut écrit différemment (majuscules et espace final). Il faut le normaliser, sinon le CA des\ncommandes livrées serait sous-estimé.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 4,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 4,
+    "type": "text",
+    "content": "Question 2.3\nQuantités non numériques ou négatives : nombre de lignes et 5 exemples (avec try_cast). Code\nq = try_cast(\"quantite\", \"int\")\nquantites_invalides = commandes_raw.filter(q.isNull() | (q < 0))\nprint(\"Lignes concernées :\", quantites_invalides.count())\nquantites_invalides.show(5)\nSortie\nLignes concernées : 35\n+-----------+---------+----------+--------+-------------+-------+\n|id_commande|id_client|id_produit|quantite|date_commande| statut|\n+-----------+---------+----------+--------+-------------+-------+\n| 1| 51| 8| abc| 2025-05-05| livree|\n| 6| 35| 8| -2| 2025-04-08|annulee|\n| 151| 25| 8| abc| 2025-09-25| livree|\n| 206| 44| 5| -2| 2025-11-20| Livree|\n| 301| 43| 5| abc| 2025-09-27| livree|\n+-----------+---------+----------+--------+-------------+-------+\nonly showing top 5 rows\nRéponse : 35 lignes sont concernées : 20 quantités « abc » (non numériques) et 15 quantités négatives\n(-2). En mode ANSI (Spark 4), un cast classique lèverait une erreur ; try_cast renvoie null. Question 2.4\nProblème de la colonne prix dans produits_raw ; produit concerné. Code\nproduits_raw.filter(try_cast(\"prix\", \"int\").isNull()).show()\nSortie\n+----------+------+------------+----+\n|id_produit| nom| categorie|prix|\n+----------+------+------------+----+\n| 4|Casque|Informatique| N/A|\n+----------+------+------------+----+\nRéponse : la colonne prix contient la valeur « N/A », qui n'est pas un nombre.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 4,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 5,
+    "type": "text",
+    "content": "Le produit concerné est le\nn°4 (Casque, catégorie Informatique). TP3 – Analyse de ventes e-commerce avec Spark SQL Page 4",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 4,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 6,
+    "type": "text",
+    "content": "Partie 3 – Nettoyage et typage\nQuestion 3.1\nDataFrame commandes : règles R1 à R4 ; nombre de lignes avant / après et schéma final. Code\nprint(\"Avant nettoyage :\", commandes_raw.count())\ncommandes = (commandes_raw\n.dropDuplicates() # R1\n.withColumn(\"id_commande\", try_cast(\"id_commande\", \"int\")) # R2\n.withColumn(\"id_client\", try_cast(\"id_client\", \"int\"))\n.withColumn(\"id_produit\", try_cast(\"id_produit\", \"int\"))\n.withColumn(\"quantite\", try_cast(\"quantite\", \"int\"))\n.withColumn(\"date_commande\", try_cast(\"date_commande\", \"date\"))\n.withColumn(\"statut\", F.lower(F.trim(F.col(\"statut\")))) # R3\n.filter(F.col(\"quantite\").isNotNull() & (F.col(\"quantite\") > 0)) # R4\n.filter(F.col(\"date_commande\").isNotNull())\n.filter(F.col(\"id_client\").isNotNull())\n)\nprint(\"Après nettoyage :\", commandes.count())\ncommandes.printSchema()\nSortie\nAvant nettoyage : 3040\nAprès nettoyage : 2949\nroot\n|-- id_commande: integer (nullable = true)\n|-- id_client: integer (nullable = true)\n|-- id_produit: integer (nullable = true)\n|-- quantite: integer (nullable = true)\n|-- date_commande: date (nullable = true)\n|-- statut: string (nullable = true)\nRéponse : on passe de 3040 à 2949 commandes. Les colonnes sont maintenant typées (int, date) et le\nstatut est normalisé. Question 3.2\nDataFrame produits : R2 et R5 (prix manquant remplacé par la moyenne de la catégorie via une fenêtre). Code\nw = Window.partitionBy(\"categorie\")\nproduits = (produits_raw\n.withColumn(\"id_produit\", try_cast(\"id_produit\", \"int\"))\n.withColumn(\"prix\", try_cast(\"prix\", \"double\"))\n.withColumn(\"prix\", F.coalesce(F.col(\"prix\"), F.avg(\"prix\").over(w)))\n)\nproduits.orderBy(\"id_produit\").show()\nSortie\n+----------+-------------+------------+-----+\n|id_produit| nom| categorie| prix|\n+----------+-------------+------------+-----+\n| 1| Clavier|Informatique|399.0|\n| 2| Souris|Informatique| 49.0|\n| 3| Ecran|Informatique| 49.0|\n| 4| Casque|Informatique|149.0|\n| 5| Webcam|Informatique| 99.0|\n| 6| Lampe| Maison| 79.0|\n| 7| Chaise| Maison| 79.0|\n| 8| Bureau| Maison| 79.0|\n| 9| Etagere| Maison|399.0|\n| 10| Ballon| Sport| 49.0|\n| 11| Raquette| Sport|399.0|\n| 12|Tapis de yoga| Sport|399.0|\n| 13| Haltères| Sport|249.0|\n+----------+-------------+------------+-----+\nRéponse : le Casque reçoit 149.0, soit la moyenne des autres prix Informatique : (399 + 49 + 49 + 99) /\n4.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 5,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 7,
+    "type": "text",
+    "content": "TP3 – Analyse de ventes e-commerce avec Spark SQL Page 5",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 5,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 8,
+    "type": "text",
+    "content": "Question 3.3\nDataFrame clients : R2 et R3 (id_client entier, date_inscription en date, ville avec trim puis initcap). Code\nclients = (clients_raw\n.withColumn(\"id_client\", F.col(\"id_client\").cast(\"int\"))\n.withColumn(\"date_inscription\", try_cast(\"date_inscription\", \"date\"))\n.withColumn(\"ville\", F.initcap(F.trim(F.col(\"ville\"))))\n)\nclients.printSchema()\nclients.select(\"ville\").distinct().orderBy(\"ville\").show()\nSortie\nroot\n|-- date_inscription: date (nullable = true)\n|-- id_client: integer (nullable = true)\n|-- nom: string (nullable = true)\n|-- ville: string (nullable = true)\n+----------+\n| ville|\n+----------+\n| Agadir|\n|Casablanca|\n| Fès|\n| Marrakech|\n| Rabat|\n| Tanger|\n+----------+\nRéponse : la liste des villes est cohérente : 6 valeurs distinctes (« FÈS » est bien devenu « Fès »). Partie 4 – Requêtes SQL sur vues temporaires\nQuestion 4.1\nCréer les vues ; CA total des commandes livrées et nombre de commandes livrées. Code\nproduits.createOrReplaceTempView(\"produits\")\nclients.createOrReplaceTempView(\"clients\")\ncommandes.createOrReplaceTempView(\"commandes\")\nspark.sql(\"\"\"\nSELECT SUM(c.quantite * p.prix) AS ca_total,\nCOUNT(*) AS nb_commandes_livrees\nFROM commandes c\nJOIN produits p ON c.id_produit = p.id_produit\nWHERE c.statut = 'livree'\n\"\"\").show()\nSortie\n+---------+--------------------+\n| ca_total|nb_commandes_livrees|\n+---------+--------------------+\n|1215123.0| 2089|\n+---------+--------------------+\nRéponse : CA total = 1 215 123 pour 2089 commandes livrées. Question 4.2\nCA par catégorie, trié par CA décroissant, avec nombre de commandes et panier moyen.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 6,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 9,
+    "type": "text",
+    "content": "Code\nspark.sql(\"\"\"\nSELECT p.categorie,\nSUM(c.quantite * p.prix) AS ca,\nCOUNT(*) AS nb_commandes,\nROUND(SUM(c.quantite * p.prix) / COUNT(*), 2) AS panier_moyen\nFROM commandes c\nJOIN produits p ON c.id_produit = p.id_produit\nWHERE c.statut = 'livree'\nGROUP BY p.categorie\nORDER BY ca DESC\n\"\"\").show()\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 6",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 6,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 10,
+    "type": "text",
+    "content": "Sortie\n+------------+--------+------------+------------+\n| categorie| ca|nb_commandes|panier_moyen|\n+------------+--------+------------+------------+\n| Sport|574687.0| 685| 838.96|\n|Informatique|354311.0| 800| 442.89|\n| Maison|286125.0| 604| 473.72|\n+------------+--------+------------+------------+\nRéponse : Sport arrive en tête (574 687) avec le panier moyen le plus élevé (838.96), devant\nInformatique et Maison. Question 4.3\nCA mensuel (format yyyy-MM) trié chronologiquement. Quel mois a généré le CA le plus élevé ? Code\nca_mensuel = spark.sql(\"\"\"\nSELECT date_format(c.date_commande, 'yyyy-MM') AS mois,\nSUM(c.quantite * p.prix) AS ca\nFROM commandes c\nJOIN produits p ON c.id_produit = p.id_produit\nWHERE c.statut = 'livree'\nGROUP BY mois\nORDER BY mois\n\"\"\")\nca_mensuel.show()\nca_mensuel.orderBy(F.desc(\"ca\")).show(1)\nSortie\n+-------+--------+\n| mois| ca|\n+-------+--------+\n|2025-01|118017.0|\n|2025-02| 98790.0|\n|2025-03|109451.0|\n|2025-04| 81453.0|\n|2025-05| 86787.0|\n|2025-06|114252.0|\n|2025-07|106081.0|\n|2025-08|114002.0|\n|2025-09| 92077.0|\n|2025-10| 90417.0|\n|2025-11| 99390.0|\n|2025-12|104406.0|\n+-------+--------+\n+-------+--------+\n| mois| ca|\n+-------+--------+\n|2025-01|118017.0|\n+-------+--------+\nonly showing top 1 row\nRéponse : le mois avec le CA le plus élevé est 2025-01 (118 017). Question 4.4\nTop 5 des produits par CA (nom, catégorie, quantité totale vendue, CA).",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 7,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 11,
+    "type": "text",
+    "content": "Code\nspark.sql(\"\"\"\nSELECT p.nom,\np.categorie,\nSUM(c.quantite) AS quantite_totale,\nSUM(c.quantite * p.prix) AS ca\nFROM commandes c\nJOIN produits p ON c.id_produit = p.id_produit\nWHERE c.statut = 'livree'\nGROUP BY p.nom, p.categorie\nORDER BY ca DESC\nLIMIT 5\n\"\"\").show()\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 7",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 7,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 12,
+    "type": "text",
+    "content": "Sortie\n+-------------+------------+---------------+--------+\n| nom| categorie|quantite_totale| ca|\n+-------------+------------+---------------+--------+\n| Raquette| Sport| 552|220248.0|\n|Tapis de yoga| Sport| 517|206283.0|\n| Clavier|Informatique| 491|195909.0|\n| Etagere| Maison| 451|179949.0|\n| Haltères| Sport| 485|120765.0|\n+-------------+------------+---------------+--------+\nPartie 5 – Jointures en API DataFrame\nQuestion 5.1\nDataFrame ventes : commandes livrées jointes à produits et clients, avec ca = quantite × prix (renommage\ndes colonnes nom). Code\nclients_r = clients.withColumnRenamed(\"nom\", \"nom_client\")\nproduits_r = produits.withColumnRenamed(\"nom\", \"produit\")\nventes = (commandes\n.filter(F.col(\"statut\") == \"livree\")\n.join(produits_r, on=\"id_produit\", how=\"inner\")\n.join(clients_r, on=\"id_client\", how=\"inner\")\n.withColumn(\"ca\", F.col(\"quantite\") * F.col(\"prix\"))\n.select(\"id_commande\", \"id_client\", \"date_commande\", \"nom_client\", \"ville\",\n\"produit\", \"categorie\", \"quantite\", \"prix\", \"ca\")\n)\nventes.show(5, truncate=False)\nprint(\"Nombre de ventes :\", ventes.count())\nSortie\n+-----------+---------+-------------+-----------------+------+-------------+------------+--------+-----+------+\n|id_commande|id_client|date_commande|nom_client |ville |produit |categorie |quantite|prix |ca |\n+-----------+---------+-------------+-----------------+------+-------------+------------+--------+-----+------+\n|8 |29 |2025-02-08 |Ayoub Darif |Agadir|Haltères |Sport |5 |249.0|1245.0|\n|13 |45 |2025-08-05 |Salma Benani |Fès |Tapis de yoga|Sport |5 |399.0|1995.0|\n|18 |12 |2025-02-11 |Ayoub Tazi |Agadir|Souris |Informatique|5 |49.0 |245.0 |\n|35 |4 |2025-05-09 |Meryem Darif |Rabat |Souris |Informatique|4 |49.0 |196.0 |\n|82 |28 |2025-09-16 |Meryem El Idrissi|Rabat |Etagere |Maison |4 |399.0|1596.0|\n+-----------+---------+-------------+-----------------+------+-------------+------------+--------+-----+------+\nonly showing top 5 rows\nNombre de ventes : 2089\nRéponse : 2089 ventes, soit le même nombre de commandes livrées qu'en 4.1. La colonne id_client est\nconservée car elle sert en Partie 7 (deux clients peuvent avoir le même nom). Question 5.2\nCA par ville (décroissant) en API DataFrame ; vérifier que la somme est égale au CA total de 4.1. Code\nca_ville = (ventes.groupBy(\"ville\")\n.agg(F.sum(\"ca\").alias(\"ca\"))\n.orderBy(F.desc(\"ca\")))\nca_ville.show()\nsomme_villes = ca_ville.agg(F.sum(\"ca\")).collect()[0][0]\nca_total = ventes.agg(F.sum(\"ca\")).collect()[0][0]\nprint(\"Somme des CA par ville :\", somme_villes)\nprint(\"CA total (4.1) :\", ca_total)\nprint(\"Égalité :\", somme_villes == ca_total)\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 8",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 8,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 13,
+    "type": "text",
+    "content": "Sortie\n+----------+--------+\n| ville| ca|\n+----------+--------+\n| Rabat|253369.0|\n| Tanger|220226.0|\n| Fès|209395.0|\n| Marrakech|208387.0|\n| Agadir|170305.0|\n|Casablanca|153441.0|\n+----------+--------+\nSomme des CA par ville : 1215123.0\nCA total (4.1) : 1215123.0\nÉgalité : True\nRéponse : Rabat est la première ville (253 369). La somme des CA par ville vaut 1 215 123, identique au\nCA total de 4.1. Question 5.3\nClients n'ayant passé aucune commande (left_anti). Combien ? Code\nsans_commande = clients.join(commandes, on=\"id_client\", how=\"left_anti\")\nsans_commande.show()\nprint(\"Clients sans commande :\", sans_commande.count())\nSortie\n+---------+----------------+------------------+----------+\n|id_client|date_inscription| nom| ville|\n+---------+----------------+------------------+----------+\n| 55| 2024-04-22| Omar El Idrissi| Tanger|\n| 56| 2024-11-19| Youssef Fassi|Casablanca|\n| 57| 2024-01-17| Omar Alaoui|Casablanca|\n| 58| 2024-05-01|Youssef El Idrissi| Fès|\n| 59| 2024-10-03| Anas Benani| Fès|\n| 60| 2024-08-30| Ayoub El Idrissi| Rabat|\n+---------+----------------+------------------+----------+\nClients sans commande : 6\nRéponse : 6 clients (n° 55 à 60) n'ont passé aucune commande : les commandes ne sont générées que\npour les clients 1 à 54.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 9,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 14,
+    "type": "text",
+    "content": "Question 5.4\nDifférence entre inner, left, left_semi et left_anti ; cas où un left join aurait donné un résultat différent en 5.1. Réponse : inner ne garde que les lignes qui ont une correspondance dans les deux tables. left garde\ntoutes les lignes de la table de gauche ; sans correspondance, les colonnes de droite valent null. left_semi garde les lignes de gauche qui ont au moins une correspondance, sans ajouter de colonnes de\ndroite (filtre « existe dans »). left_anti garde les lignes de gauche qui n'ont aucune correspondance (filtre\n« n'existe pas dans »).",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 9,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 15,
+    "type": "text",
+    "content": "En 5.1, un left join aurait donné un résultat différent si une commande contenait un id_produit absent de\nproduits ou un id_client absent de clients : ces commandes seraient restées avec des colonnes null au lieu\nd'être supprimées. Ici, tous les produits (1 à 13) et clients (1 à 54) des commandes existent, donc inner et\nleft donnent le même résultat (2089 lignes). TP3 – Analyse de ventes e-commerce avec Spark SQL Page 9",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 9,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 16,
+    "type": "text",
+    "content": "Partie 6 – Fonctions de fenêtre\nQuestion 6.1\nClasser les produits par CA décroissant dans chaque catégorie (dense_rank) et garder les 2 meilleurs. Code\nca_produit = ventes.groupBy(\"categorie\", \"produit\").agg(F.sum(\"ca\").alias(\"ca\"))\nw = Window.partitionBy(\"categorie\").orderBy(F.desc(\"ca\"))\ntop2 = (ca_produit\n.withColumn(\"rang\", F.dense_rank().over(w))\n.filter(F.col(\"rang\") <= 2)\n.orderBy(\"categorie\", \"rang\"))\ntop2.show()\nSortie\n+------------+-------------+--------+----+\n| categorie| produit| ca|rang|\n+------------+-------------+--------+----+\n|Informatique| Clavier|195909.0| 1|\n|Informatique| Casque| 60941.0| 2|\n| Maison| Etagere|179949.0| 1|\n| Maison| Bureau| 39184.0| 2|\n| Sport| Raquette|220248.0| 1|\n| Sport|Tapis de yoga|206283.0| 2|\n+------------+-------------+--------+----+\nRéponse : Informatique : Clavier, Casque ; Maison : Etagere, Bureau ; Sport : Raquette, Tapis de yoga. Question 6.2\nCA cumulé mois par mois et variation en % par rapport au mois précédent (lag). Code\nca_mois = (ventes\n.withColumn(\"mois\", F.date_format(\"date_commande\", \"yyyy-MM\"))\n.groupBy(\"mois\")\n.agg(F.sum(\"ca\").alias(\"ca\")))\nw = Window.orderBy(\"mois\")\nevolution = (ca_mois\n.withColumn(\"ca_cumule\",\nF.sum(\"ca\").over(w.rowsBetween(Window.unboundedPreceding, Window.currentRow)))\n.withColumn(\"ca_mois_precedent\", F.lag(\"ca\", 1).over(w))\n.withColumn(\"variation_pct\",\nF.round((F.col(\"ca\") - F.col(\"ca_mois_precedent\"))\n/ F.col(\"ca_mois_precedent\") * 100, 2))\n.orderBy(\"mois\"))\nevolution.show()\nSortie\n+-------+--------+---------+-----------------+-------------+\n| mois| ca|ca_cumule|ca_mois_precedent|variation_pct|\n+-------+--------+---------+-----------------+-------------+\n|2025-01|118017.0| 118017.0| NULL| NULL|\n|2025-02| 98790.0| 216807.0| 118017.0| -16.29|\n|2025-03|109451.0| 326258.0| 98790.0| 10.79|\n|2025-04| 81453.0| 407711.0| 109451.0| -25.58|\n|2025-05| 86787.0| 494498.0| 81453.0| 6.55|\n|2025-06|114252.0| 608750.0| 86787.0| 31.65|\n|2025-07|106081.0| 714831.0| 114252.0| -7.15|\n|2025-08|114002.0| 828833.0| 106081.0| 7.47|\n|2025-09| 92077.0| 920910.0| 114002.0| -19.23|\n|2025-10| 90417.0|1011327.0| 92077.0| -1.8|\n|2025-11| 99390.0|1110717.0| 90417.0| 9.92|\n|2025-12|104406.0|1215123.0| 99390.0| 5.05|\n+-------+--------+---------+-----------------+-------------+\nRéponse : le cumul atteint 1 215 123 en décembre, ce qui correspond au CA total. La plus forte hausse\nest en juin (+31.65 %) et la plus forte baisse en avril (−25.58 %).",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 10,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 17,
+    "type": "text",
+    "content": "Janvier n'a pas de mois précédent, donc\nsa variation vaut NULL. TP3 – Analyse de ventes e-commerce avec Spark SQL Page 10",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 10,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 18,
+    "type": "text",
+    "content": "Partie 7 – Segmentation des clients\nQuestion 7.1\nCA total par client et segment (Gold ≥ 25 000, Silver ≥ 20 000, Bronze sinon) avec when/otherwise. Combien de clients par segment ? Code\nca_client = (ventes.groupBy(\"id_client\", \"nom_client\", \"ville\")\n.agg(F.sum(\"ca\").alias(\"ca_total\"))\n.withColumn(\"segment\",\nF.when(F.col(\"ca_total\") >= 25000, \"Gold\")\n.when(F.col(\"ca_total\") >= 20000, \"Silver\")\n.otherwise(\"Bronze\")))\nca_client.orderBy(F.desc(\"ca_total\")).show(10)\nca_client.groupBy(\"segment\").count().show()\nSortie\n+---------+-----------------+---------+--------+-------+\n|id_client| nom_client| ville|ca_total|segment|\n+---------+-----------------+---------+--------+-------+\n| 37| Hamza Alaoui| Fès| 41736.0| Gold|\n| 41|Meryem El Idrissi| Fès| 38512.0| Gold|\n| 6|Khadija Cherkaoui| Rabat| 35376.0| Gold|\n| 43| Meryem Alaoui| Tanger| 32523.0| Gold|\n| 39| Salma El Idrissi| Agadir| 31485.0| Gold|\n| 18| Salma Fassi| Rabat| 30804.0| Gold|\n| 52| Hamza Darif|Marrakech| 29435.0| Gold|\n| 9| Hamza El Idrissi| Fès| 29401.0| Gold|\n| 50| Ayoub Darif| Tanger| 29270.0| Gold|\n| 38| Imane Darif|Marrakech| 28751.0| Gold|\n+---------+-----------------+---------+--------+-------+\nonly showing top 10 rows\n+-------+-----+\n|segment|count|\n+-------+-----+\n| Gold| 16|\n| Bronze| 22|\n| Silver| 16|\n+-------+-----+\nRéponse : 16 clients Gold, 16 Silver et 22 Bronze, soit 54 clients. Question 7.2\nMême segmentation en SQL pur (CASE WHEN) à partir de la vue commandes ; nom et ville des 5 meilleurs\nclients. Code\nspark.sql(\"\"\"\nWITH ca_clients AS (\nSELECT c.id_client,\nSUM(c.quantite * p.prix) AS ca_total\nFROM commandes c\nJOIN produits p ON c.id_produit = p.id_produit\nWHERE c.statut = 'livree'\nGROUP BY c.id_client\n)\nSELECT cl.nom, cl.ville, cc.ca_total,\nCASE WHEN cc.ca_total >= 25000 THEN 'Gold'\nWHEN cc.ca_total >= 20000 THEN 'Silver'\nELSE 'Bronze'\nEND AS segment\nFROM ca_clients cc\nJOIN clients cl ON cc.id_client = cl.id_client\nORDER BY cc.ca_total DESC\nLIMIT 5\n\"\"\").show()\nSortie\n+-----------------+------+--------+-------+\n| nom| ville|ca_total|segment|\n+-----------------+------+--------+-------+\n| Hamza Alaoui| Fès| 41736.0| Gold|\n|Meryem El Idrissi| Fès| 38512.0| Gold|\n|Khadija Cherkaoui| Rabat| 35376.0| Gold|\n| Meryem Alaoui|Tanger| 32523.0| Gold|\n| Salma El Idrissi|Agadir| 31485.0| Gold|\n+-----------------+------+--------+-------+\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 11",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 11,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 19,
+    "type": "text",
+    "content": "Réponse : on retrouve les mêmes 5 meilleurs clients qu'en 7.1, tous Gold, avec Hamza Alaoui (Fès) en\ntête à 41 736. Partie 8 – Optimisation et plans d'exécution (Catalyst)\nQuestion 8.1\nPlan (explain formatted) de la jointure commandes/produits suivie d'un filtre categorie = 'Sport'. Où apparaît\nle filtre ? Nom de l'optimisation ? Code\ncommandes.join(produits, \"id_produit\").filter(F.col(\"categorie\") == \"Sport\").explain(\"formatted\")\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 12",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 12,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 20,
+    "type": "text",
+    "content": "Sortie\n== Physical Plan ==\nAdaptiveSparkPlan (17)\n+- Project (16)\n+- BroadcastHashJoin Inner BuildRight (15)\n:- HashAggregate (5)\n: +- Exchange (4)\n: +- HashAggregate (3)\n: +- Filter (2)\n: +- Scan csv (1)\n+- BroadcastExchange (14)\n+- Project (13)\n+- Filter (12)\n+- Window (11)\n+- Sort (10)\n+- Exchange (9)\n+- Project (8)\n+- Filter (7)\n+- Scan csv (6)\n(1) Scan csv\nOutput [6]: [id_commande#4, id_client#5, id_produit#6, quantite#7,\ndate_commande#8, statut#9]\nBatched: false\nLocation: InMemoryFileIndex\n[file:/home/jovyan/work/data_tp2/commandes.csv]\nPushedFilters: [IsNotNull(quantite), IsNotNull(date_commande),\nIsNotNull(id_client)]\nReadSchema:\nstruct<id_commande:string,id_client:string,id_produit:string,quantite:\nstring,date_commande:string,statut:string>\n(2) Filter\nInput [6]: [id_commande#4, id_client#5, id_produit#6, quantite#7,\ndate_commande#8, statut#9]\nCondition : (((((((isnotnull(quantite#7) AND\nisnotnull(date_commande#8)) AND isnotnull(id_client#5)) AND\nisnotnull(try_cast(quantite#7 as int))) AND (try_cast(quantite#7 as\nint) > 0)) AND isnotnull(try_cast(date_commande#8 as date))) AND\nisnotnull(try_cast(id_client#5 as int))) AND\nisnotnull(try_cast(id_produit#6 as int)))\n(3) HashAggregate\nInput [6]: [id_commande#4, id_client#5, id_produit#6, quantite#7,\ndate_commande#8, statut#9]\nKeys [6]: [id_produit#6, date_commande#8, id_commande#4, quantite#7,\nid_client#5, statut#9]\nFunctions: []\nAggregate Attributes: []\nResults [6]: [id_produit#6, date_commande#8, id_commande#4,\nquantite#7, id_client#5, statut#9]\n(4) Exchange\nInput [6]: [id_produit#6, date_commande#8, id_commande#4, quantite#7,\nid_client#5, statut#9]\nArguments: hashpartitioning(id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9, 8),\nENSURE_REQUIREMENTS, [plan_id=7531]\n(5) HashAggregate\nInput [6]: [id_produit#6, date_commande#8, id_commande#4, quantite#7,\nid_client#5, statut#9]\nKeys [6]: [id_produit#6, date_commande#8, id_commande#4, quantite#7,\nid_client#5, statut#9]\nFunctions: []\nAggregate Attributes: []\nResults [6]: [try_cast(id_commande#4 as int) AS id_commande#276,\ntry_cast(id_client#5 as int) AS id_client#277, try_cast(id_produit#6\nas int) AS id_produit#278, try_cast(quantite#7 as int) AS\nquantite#279, try_cast(date_commande#8 as date) AS date_commande#280,\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 13",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 13,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 21,
+    "type": "text",
+    "content": "lower(trim(statut#9, None)) AS statut#281]\n(6) Scan csv\nOutput [4]: [id_produit#0, nom#1, categorie#2, prix#3]\nBatched: false\nLocation: InMemoryFileIndex\n[file:/home/jovyan/work/data_tp2/produits.csv]\nPushedFilters: [IsNotNull(categorie), EqualTo(categorie,Sport)]\nReadSchema:\nstruct<id_produit:string,nom:string,categorie:string,prix:string>\n(7) Filter\nInput [4]: [id_produit#0, nom#1, categorie#2, prix#3]\nCondition : (isnotnull(categorie#2) AND (categorie#2 = Sport))\n(8) Project\nOutput [4]: [try_cast(id_produit#0 as int) AS id_produit#298, nom#1,\ncategorie#2, try_cast(prix#3 as double) AS prix#299]\nInput [4]: [id_produit#0, nom#1, categorie#2, prix#3]\n(9) Exchange\nInput [4]: [id_produit#298, nom#1, categorie#2, prix#299]\nArguments: hashpartitioning(categorie#2, 8), ENSURE_REQUIREMENTS,\n[plan_id=7533]\n(10) Sort\nInput [4]: [id_produit#298, nom#1, categorie#2, prix#299]\nArguments: [categorie#2 ASC NULLS FIRST], false, 0\n(11) Window\nInput [4]: [id_produit#298, nom#1, categorie#2, prix#299]\nArguments: [avg(prix#299) windowspecdefinition(categorie#2,\nspecifiedwindowframe(RowFrame, unboundedpreceding$(),\nunboundedfollowing$())) AS _we0#302], [categorie#2]\n(12) Filter\nInput [5]: [id_produit#298, nom#1, categorie#2, prix#299, _we0#302]\nCondition : isnotnull(id_produit#298)\n(13) Project\nOutput [4]: [id_produit#298, nom#1, categorie#2, coalesce(prix#299,\n_we0#302) AS prix#300]\nInput [5]: [id_produit#298, nom#1, categorie#2, prix#299, _we0#302]\n(14) BroadcastExchange\nInput [4]: [id_produit#298, nom#1, categorie#2, prix#300]\nArguments: HashedRelationBroadcastMode(List(cast(input[0, int, true]\nas bigint)),false), [plan_id=7539]\n(15) BroadcastHashJoin\nLeft keys [1]: [id_produit#278]\nRight keys [1]: [id_produit#298]\nJoin type: Inner\nJoin condition: None\n(16) Project\nOutput [9]: [id_produit#278, id_commande#276, id_client#277,\nquantite#279, date_commande#280, statut#281, nom#1, categorie#2,\nprix#300]\nInput [10]: [id_commande#276, id_client#277, id_produit#278,\nquantite#279, date_commande#280, statut#281, id_produit#298, nom#1,\ncategorie#2, prix#300]\n(17) AdaptiveSparkPlan\nOutput [9]: [id_produit#278, id_commande#276, id_client#277,\nquantite#279, date_commande#280, statut#281, nom#1, categorie#2,\nprix#300]\nArguments: isFinalPlan=false\nRéponse : le filtre categorie = 'Sport' est écrit après la jointure, mais dans le plan optimisé il apparaît\navant, côté produits : dans les PushedFilters du Scan csv (6) [EqualTo(categorie,Sport)] et dans le Filter\n(7), sous le BroadcastHashJoin (15). Spark filtre d'abord les produits puis fait la jointure sur moins de\nlignes. Cette optimisation s'appelle le predicate pushdown (poussée des prédicats), réalisée\nautomatiquement par l'optimiseur Catalyst. TP3 – Analyse de ventes e-commerce avec Spark SQL Page 14",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 14,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 22,
+    "type": "text",
+    "content": "Question 8.2\nDésactiver le broadcast automatique, observer la stratégie, forcer F.broadcast(produits), puis restaurer la\nconfiguration. Pourquoi le broadcast est-il efficace ? Code\n# 1) Plan normal\ncommandes.join(produits, \"id_produit\").explain()\n# 2) Broadcast automatique désactivé\nspark.conf.set(\"spark.sql.autoBroadcastJoinThreshold\", \"-1\")\ncommandes.join(produits, \"id_produit\").explain()\n# 3) Broadcast forcé\ncommandes.join(F.broadcast(produits), \"id_produit\").explain()\n# 4) Restauration de la configuration\nspark.conf.unset(\"spark.sql.autoBroadcastJoinThreshold\")\nprint(spark.conf.get(\"spark.sql.autoBroadcastJoinThreshold\"))\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 15",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 15,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 23,
+    "type": "text",
+    "content": "Sortie\n== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=false\n+- Project [id_produit#278, id_commande#276, id_client#277,\nquantite#279, date_commande#280, statut#281, nom#1, categorie#2,\nprix#300]\n+- BroadcastHashJoin [id_produit#278], [id_produit#298], Inner,\nBuildRight, false\n:- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n: +- Exchange hashpartitioning(id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9, 8),\nENSURE_REQUIREMENTS, [plan_id=10672]\n: +- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n: +- Filter (((((((isnotnull(quantite#7) AND\nisnotnull(date_commande#8)) AND isnotnull(id_client#5)) AND\nisnotnull(try_cast(quantite#7 as int))) AND (try_cast(quantite#7 as\nint) > 0)) AND isnotnull(try_cast(date_commande#8 as date))) AND\nisnotnull(try_cast(id_client#5 as int))) AND\nisnotnull(try_cast(id_produit#6 as int)))\n: +- FileScan csv\n[id_commande#4,id_client#5,id_produit#6,quantite#7,date_commande#8,sta\ntut#9] Batched: false, DataFilters: [isnotnull(quantite#7),\nisnotnull(date_commande#8), isnotnull(id_client#5),\nisnotnull(try_cast(qu..., Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/commandes.csv],\nPartitionFilters: [], PushedFilters: [IsNotNull(quantite),\nIsNotNull(date_commande), IsNotNull(id_client)], ReadSchema:\nstruct<id_commande:string,id_client:string,id_produit:string,quantite:\nstring,date_commande:string... +- BroadcastExchange\nHashedRelationBroadcastMode(List(cast(input[0, int, true] as\nbigint)),false), [plan_id=10680]\n+- Project [id_produit#298, nom#1, categorie#2,\ncoalesce(prix#299, _we0#302) AS prix#300]\n+- Filter isnotnull(id_produit#298)\n+- Window [avg(prix#299)\nwindowspecdefinition(categorie#2, specifiedwindowframe(RowFrame,\nunboundedpreceding$(), unboundedfollowing$())) AS _we0#302],\n[categorie#2]\n+- Sort [categorie#2 ASC NULLS FIRST], false, 0\n+- Exchange hashpartitioning(categorie#2, 8),\nENSURE_REQUIREMENTS, [plan_id=10674]\n+- Project [try_cast(id_produit#0 as int) AS\nid_produit#298, nom#1, categorie#2, try_cast(prix#3 as double) AS\nprix#299]\n+- FileScan csv\n[id_produit#0,nom#1,categorie#2,prix#3] Batched: false, DataFilters:\n[], Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/produits.csv],\nPartitionFilters: [], PushedFilters: [], ReadSchema:\nstruct<id_produit:string,nom:string,categorie:string,prix:string>\n== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=false\n+- Project [id_produit#278, id_commande#276, id_client#277,\nquantite#279, date_commande#280, statut#281, nom#1, categorie#2,\nprix#300]\n+- SortMergeJoin [id_produit#278], [id_produit#298], Inner\n:- Sort [id_produit#278 ASC NULLS FIRST], false, 0\n: +- Exchange hashpartitioning(id_produit#278, 8),\nENSURE_REQUIREMENTS, [plan_id=10737]\n: +- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n: +- Exchange hashpartitioning(id_produit#6,\ndate_commande#8, id_commande#4, quantite#7, id_client#5, statut#9, 8),\nENSURE_REQUIREMENTS, [plan_id=10728]\n: +- HashAggregate(keys=[id_produit#6,\ndate_commande#8, id_commande#4, quantite#7, id_client#5, statut#9],\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 16",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 16,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 24,
+    "type": "text",
+    "content": "functions=[])\n: +- Filter (((((((isnotnull(quantite#7) AND\nisnotnull(date_commande#8)) AND isnotnull(id_client#5)) AND\nisnotnull(try_cast(quantite#7 as int))) AND (try_cast(quantite#7 as\nint) > 0)) AND isnotnull(try_cast(date_commande#8 as date))) AND\nisnotnull(try_cast(id_client#5 as int))) AND\nisnotnull(try_cast(id_produit#6 as int)))\n: +- FileScan csv\n[id_commande#4,id_client#5,id_produit#6,quantite#7,date_commande#8,sta\ntut#9] Batched: false, DataFilters: [isnotnull(quantite#7),\nisnotnull(date_commande#8), isnotnull(id_client#5),\nisnotnull(try_cast(qu..., Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/commandes.csv],\nPartitionFilters: [], PushedFilters: [IsNotNull(quantite),\nIsNotNull(date_commande), IsNotNull(id_client)], ReadSchema:\nstruct<id_commande:string,id_client:string,id_produit:string,quantite:\nstring,date_commande:string... +- Sort [id_produit#298 ASC NULLS FIRST], false, 0\n+- Exchange hashpartitioning(id_produit#298, 8),\nENSURE_REQUIREMENTS, [plan_id=10738]\n+- Project [id_produit#298, nom#1, categorie#2,\ncoalesce(prix#299, _we0#302) AS prix#300]\n+- Filter isnotnull(id_produit#298)\n+- Window [avg(prix#299)\nwindowspecdefinition(categorie#2, specifiedwindowframe(RowFrame,\nunboundedpreceding$(), unboundedfollowing$())) AS _we0#302],\n[categorie#2]\n+- Sort [categorie#2 ASC NULLS FIRST], false, 0\n+- Exchange hashpartitioning(categorie#2, 8),\nENSURE_REQUIREMENTS, [plan_id=10730]\n+- Project [try_cast(id_produit#0 as int)\nAS id_produit#298, nom#1, categorie#2, try_cast(prix#3 as double) AS\nprix#299]\n+- FileScan csv\n[id_produit#0,nom#1,categorie#2,prix#3] Batched: false, DataFilters:\n[], Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/produits.csv],\nPartitionFilters: [], PushedFilters: [], ReadSchema:\nstruct<id_produit:string,nom:string,categorie:string,prix:string>\n== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=false\n+- Project [id_produit#278, id_commande#276, id_client#277,\nquantite#279, date_commande#280, statut#281, nom#1, categorie#2,\nprix#300]\n+- BroadcastHashJoin [id_produit#278], [id_produit#298], Inner,\nBuildRight, false\n:- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n: +- Exchange hashpartitioning(id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9, 8),\nENSURE_REQUIREMENTS, [plan_id=10788]\n: +- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n: +- Filter (((((((isnotnull(quantite#7) AND\nisnotnull(date_commande#8)) AND isnotnull(id_client#5)) AND\nisnotnull(try_cast(quantite#7 as int))) AND (try_cast(quantite#7 as\nint) > 0)) AND isnotnull(try_cast(date_commande#8 as date))) AND\nisnotnull(try_cast(id_client#5 as int))) AND\nisnotnull(try_cast(id_produit#6 as int)))\n: +- FileScan csv\n[id_commande#4,id_client#5,id_produit#6,quantite#7,date_commande#8,sta\ntut#9] Batched: false, DataFilters: [isnotnull(quantite#7),\nisnotnull(date_commande#8), isnotnull(id_client#5),\nisnotnull(try_cast(qu..., Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/commandes.csv],\nPartitionFilters: [], PushedFilters: [IsNotNull(quantite),\nIsNotNull(date_commande), IsNotNull(id_client)], ReadSchema:\nstruct<id_commande:string,id_client:string,id_produit:string,quantite:\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 17",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 17,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 25,
+    "type": "text",
+    "content": "string,date_commande:string... +- BroadcastExchange\nHashedRelationBroadcastMode(List(cast(input[0, int, true] as\nbigint)),false), [plan_id=10796]\n+- Project [id_produit#298, nom#1, categorie#2,\ncoalesce(prix#299, _we0#302) AS prix#300]\n+- Filter isnotnull(id_produit#298)\n+- Window [avg(prix#299)\nwindowspecdefinition(categorie#2, specifiedwindowframe(RowFrame,\nunboundedpreceding$(), unboundedfollowing$())) AS _we0#302],\n[categorie#2]\n+- Sort [categorie#2 ASC NULLS FIRST], false, 0\n+- Exchange hashpartitioning(categorie#2, 8),\nENSURE_REQUIREMENTS, [plan_id=10790]\n+- Project [try_cast(id_produit#0 as int) AS\nid_produit#298, nom#1, categorie#2, try_cast(prix#3 as double) AS\nprix#299]\n+- FileScan csv\n[id_produit#0,nom#1,categorie#2,prix#3] Batched: false, DataFilters:\n[], Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/produits.csv],\nPartitionFilters: [], PushedFilters: [], ReadSchema:\nstruct<id_produit:string,nom:string,categorie:string,prix:string>\n10485760b\nRéponse : par défaut, Spark choisit un BroadcastHashJoin. Sans broadcast automatique (seuil = -1), il\npasse en SortMergeJoin, avec des Exchange (shuffle) et des Sort sur les deux tables. Avec\nF.broadcast(produits), il revient au BroadcastHashJoin. La configuration est restaurée à sa valeur par\ndéfaut (10485760b = 10 Mo).",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 18,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 26,
+    "type": "text",
+    "content": "Le broadcast est efficace ici parce que produits est tout petit (13 lignes) : Spark en envoie une copie\ncomplète à chaque exécuteur, et chaque morceau de commandes fait sa jointure sur place, sans shuffle\nde la grande table ni tri. Le shuffle est l'opération la plus coûteuse dans Spark. Question 8.3\nChronométrer 3 fois ventes.groupBy(\"ville\").agg(F.sum(\"ca\")).collect() sans cache puis avec cache ; terminer\npar unpersist(). Code\nimport time\ndef chrono(titre):\nfor i in range(3):\nt0 = time.time()\nventes.groupBy(\"ville\").agg(F.sum(\"ca\")).collect()\nprint(f\"{titre} - essai {i+1} : {time.time() - t0:.3f} s\")\nchrono(\"Sans cache\")\nventes.cache()\nventes.count() # première action : remplit le cache\nchrono(\"Avec cache\")\nventes.unpersist()\nSortie\nSans cache - essai 1 : 0.445 s\nSans cache - essai 2 : 0.252 s\nSans cache - essai 3 : 0.271 s\nAvec cache - essai 1 : 0.194 s\nAvec cache - essai 2 : 0.137 s\nAvec cache - essai 3 : 0.134 s\nDataFrame[id_commande: int, id_client: int, date_commande: date,\nnom_client: string, ville: string, produit: string, categorie: string,\nquantite: int, prix: double, ca: double]\nRéponse : avec le cache, le calcul est environ deux fois plus rapide (≈ 0,13 s contre ≈ 0,26 s), car Spark\nrelit ventes depuis la mémoire au lieu de relire les fichiers et de refaire les jointures. Le gain est faible car\nles données sont petites, mais il devient important sur de gros volumes.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 18,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 27,
+    "type": "text",
+    "content": "unpersist() libère ensuite la\nmémoire. TP3 – Analyse de ventes e-commerce avec Spark SQL Page 18",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 18,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 28,
+    "type": "text",
+    "content": "Question 8.4\nComparer le plan d'une même agrégation en DataFrame et en SQL. Conclusion sur le choix de l'API ? Code\nprint(\"===== API DataFrame =====\")\ncommandes.groupBy(\"statut\").agg(F.sum(\"quantite\").alias(\"total\")).explain()\nprint(\"===== SQL =====\")\nspark.sql(\"SELECT statut, SUM(quantite) AS total FROM commandes GROUP BY statut\").explain()\nSortie\n===== API DataFrame =====\n== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=false\n+- HashAggregate(keys=[statut#281], functions=[sum(quantite#279)])\n+- Exchange hashpartitioning(statut#281, 8), ENSURE_REQUIREMENTS,\n[plan_id=9556]\n+- HashAggregate(keys=[statut#281],\nfunctions=[partial_sum(quantite#279)])\n+- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n+- Exchange hashpartitioning(id_produit#6,\ndate_commande#8, id_commande#4, quantite#7, id_client#5, statut#9, 8),\nENSURE_REQUIREMENTS, [plan_id=9552]\n+- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n+- Filter ((((((isnotnull(quantite#7) AND\nisnotnull(date_commande#8)) AND isnotnull(id_client#5)) AND\nisnotnull(try_cast(quantite#7 as int))) AND (try_cast(quantite#7 as\nint) > 0)) AND isnotnull(try_cast(date_commande#8 as date))) AND\nisnotnull(try_cast(id_client#5 as int)))\n+- FileScan csv\n[id_commande#4,id_client#5,id_produit#6,quantite#7,date_commande#8,sta\ntut#9] Batched: false, DataFilters: [isnotnull(quantite#7),\nisnotnull(date_commande#8), isnotnull(id_client#5),\nisnotnull(try_cast(qu..., Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/commandes.csv],\nPartitionFilters: [], PushedFilters: [IsNotNull(quantite),\nIsNotNull(date_commande), IsNotNull(id_client)], ReadSchema:\nstruct<id_commande:string,id_client:string,id_produit:string,quantite:\nstring,date_commande:string... ===== SQL =====\n== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=false\n+- HashAggregate(keys=[statut#281], functions=[sum(quantite#279)])\n+- Exchange hashpartitioning(statut#281, 8), ENSURE_REQUIREMENTS,\n[plan_id=9588]\n+- HashAggregate(keys=[statut#281],\nfunctions=[partial_sum(quantite#279)])\n+- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n+- Exchange hashpartitioning(id_produit#6,\ndate_commande#8, id_commande#4, quantite#7, id_client#5, statut#9, 8),\nENSURE_REQUIREMENTS, [plan_id=9584]\n+- HashAggregate(keys=[id_produit#6, date_commande#8,\nid_commande#4, quantite#7, id_client#5, statut#9], functions=[])\n+- Filter ((((((isnotnull(quantite#7) AND\nisnotnull(date_commande#8)) AND isnotnull(id_client#5)) AND\nisnotnull(try_cast(quantite#7 as int))) AND (try_cast(quantite#7 as\nint) > 0)) AND isnotnull(try_cast(date_commande#8 as date))) AND\nisnotnull(try_cast(id_client#5 as int)))\n+- FileScan csv\n[id_commande#4,id_client#5,id_produit#6,quantite#7,date_commande#8,sta\ntut#9] Batched: false, DataFilters: [isnotnull(quantite#7),\nisnotnull(date_commande#8), isnotnull(id_client#5),\nisnotnull(try_cast(qu..., Format: CSV, Location: InMemoryFileIndex(1\npaths)[file:/home/jovyan/work/data_tp2/commandes.csv],\nPartitionFilters: [], PushedFilters: [IsNotNull(quantite),\nIsNotNull(date_commande), IsNotNull(id_client)], ReadSchema:\nstruct<id_commande:string,id_client:string,id_produit:string,quantite:\nstring,date_commande:string... Réponse : les deux plans physiques sont identiques.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 19,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 29,
+    "type": "text",
+    "content": "L'API DataFrame et le SQL passent tous les deux par\nl'optimiseur Catalyst, qui produit le même plan optimisé : il n'y a aucune différence de performance. Le\nchoix de l'API est une question de lisibilité et de préférence : SQL pour des requêtes déclaratives\nfamilières, DataFrame pour enchaîner les transformations dans du code Python et les réutiliser. TP3 – Analyse de ventes e-commerce avec Spark SQL Page 19",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 19,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 30,
+    "type": "text",
+    "content": "Partie 9 – Persistance et partitionnement\nQuestion 9.1\nAjouter annee et mois (entiers) à ventes et l'écrire en Parquet dans out_tp2/ventes, partitionné par mois\n(overwrite). Afficher l'arborescence. Code\nimport os\nventes_p = (ventes\n.withColumn(\"annee\", F.year(\"date_commande\"))\n.withColumn(\"mois\", F.month(\"date_commande\")))\n(ventes_p.write\n.mode(\"overwrite\")\n.partitionBy(\"mois\")\n.parquet(\"out_tp2/ventes\"))\nfor racine, dossiers, fichiers in os.walk(\"out_tp2/ventes\"):\nniveau = racine.count(os.sep)\nprint(\" \" * niveau + os.path.basename(racine) + \"/\")\nfor f in fichiers:\nif not f.startswith(\".\"):\nprint(\" \" * (niveau + 1) + f)\nSortie\nventes/\n_SUCCESS\nmois=1/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=10/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=11/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=12/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=2/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=3/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=4/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=5/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=6/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=7/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=8/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nmois=9/\npart-00000-5bfd9993-e792-4477-a9c3-b08df53e8d4d.c000.snappy.parquet\nRéponse : Spark a créé un sous-dossier par mois (mois=1 à mois=12), chacun contenant un fichier\nParquet avec les ventes de ce mois. La colonne mois n'est plus stockée dans les fichiers : elle est déduite\ndu nom du dossier. Question 9.2\nRelire le Parquet, filtrer sur mois = 3 et afficher le plan (PartitionFilters / PushedFilters).",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 20,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 31,
+    "type": "text",
+    "content": "Comparer avec un\nfiltre sur ville. Code\nventes_parquet = spark.read.parquet(\"out_tp2/ventes\")\nprint(\"===== Filtre sur mois (colonne de partition) =====\")\nf_mois = ventes_parquet.filter(F.col(\"mois\") == 3)\nf_mois.explain()\nprint(\"Lignes :\", f_mois.count())\nprint(\"===== Filtre sur ville (colonne normale) =====\")\nf_ville = ventes_parquet.filter(F.col(\"ville\") == \"Rabat\")\nf_ville.explain()\nSortie\n[ Coller ici la sortie de la cellule après l'avoir exécutée dans Jupyter ]\nTP3 – Analyse de ventes e-commerce avec Spark SQL Page 20",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 20,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 32,
+    "type": "text",
+    "content": "Réponse : avec le filtre sur mois = 3, on voit PartitionFilters: [isnotnull(mois), (mois = 3)] et\nPushedFilters: []. Spark ne lit que le dossier mois=3 et ignore les 11 autres : c'est le partition pruning\n(élagage des partitions). Avec le filtre sur ville, on voit PartitionFilters: [] et PushedFilters:\n[IsNotNull(ville), EqualTo(ville,Rabat)] : Spark doit ouvrir tous les dossiers. Le filtre est poussé dans le\nlecteur Parquet, qui peut sauter certains blocs grâce aux statistiques min/max, mais il lit beaucoup plus\nde données. Conclusion : filtrer sur la colonne de partition est bien plus efficace.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 21,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 33,
+    "type": "text",
+    "content": "Il faut partitionner selon les colonnes\nsur lesquelles on filtre souvent. Question 9.3\nRapport final : un CSV unique (avec en-tête) du CA par catégorie et par mois, avec coalesce(1) ; afficher son\ncontenu avec Python. Code\nimport glob\nrapport = (ventes\n.withColumn(\"mois\", F.date_format(\"date_commande\", \"yyyy-MM\"))\n.groupBy(\"categorie\", \"mois\")\n.agg(F.sum(\"ca\").alias(\"ca\"))\n.orderBy(\"categorie\", \"mois\"))\n(rapport.coalesce(1)\n.write.mode(\"overwrite\")\n.option(\"header\", True)\n.csv(\"out_tp2/rapport_ca\"))\nfichier = glob.glob(\"out_tp2/rapport_ca/part-*.csv\")[0]\nprint(\"Fichier :\", fichier)\nwith open(fichier, encoding=\"utf-8\") as f:\nprint(f.read())\nSortie\nFichier : out_tp2/rapport_ca/part-00000-39032558-38f5-442c-9b5d-643188cf4f41-c000.csv\ncategorie,mois,ca\nInformatique,2025-01,35488.0\nInformatique,2025-02,26147.0\nInformatique,2025-03,29241.0\nInformatique,2025-04,27263.0\nInformatique,2025-05,30193.0\nInformatique,2025-06,24902.0\nInformatique,2025-07,31906.0\nInformatique,2025-08,42962.0\nInformatique,2025-09,25664.0\nInformatique,2025-10,30399.0\nInformatique,2025-11,25374.0\nInformatique,2025-12,24772.0\nMaison,2025-01,26724.0\nMaison,2025-02,24820.0\nMaison,2025-03,25377.0\nMaison,2025-04,17389.0\nMaison,2025-05,21075.0\nMaison,2025-06,26957.0\nMaison,2025-07,27648.0\nMaison,2025-08,18989.0\nMaison,2025-09,20767.0\nMaison,2025-10,20265.0\nMaison,2025-11,25353.0\nMaison,2025-12,30761.0\nSport,2025-01,55805.0\nSport,2025-02,47823.0\nSport,2025-03,54833.0\nSport,2025-04,36801.0\nSport,2025-05,35519.0\nSport,2025-06,62393.0\nSport,2025-07,46527.0\nSport,2025-08,52051.0\nSport,2025-09,45646.0\nSport,2025-10,39753.0\nSport,2025-11,48663.0\nSport,2025-12,48873.0\nRéponse : le dossier out_tp2/rapport_ca contient un seul fichier CSV de 36 lignes (3 catégories × 12\nmois), avec l'en-tête categorie, mois, ca. TP3 – Analyse de ventes e-commerce avec Spark SQL Page 21",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 21,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 34,
+    "type": "text",
+    "content": "Question 9.4\nPourquoi faut-il utiliser coalesce(1) avec précaution sur de gros volumes ? Réponse : coalesce(1) rassemble toutes les données dans une seule partition, donc sur un seul\nexécuteur (un seul cœur). Sur de gros volumes, on perd tout le parallélisme de Spark : l'écriture est faite\npar une seule tâche, ce qui est très lent. Cette tâche peut aussi manquer de mémoire (OutOfMemory), et\ncoalesce peut réduire le parallélisme des calculs qui précèdent dans la même étape. Il faut donc le\nréserver aux petits résultats finaux, comme un rapport agrégé ; sinon, on écrit plusieurs fichiers ou on\nutilise repartition(n) avec un nombre raisonnable de partitions.",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 22,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  },
+  {
+    "id": 35,
+    "type": "text",
+    "content": "TP3 – Analyse de ventes e-commerce avec Spark SQL Page 22",
+    "doc": "TP3_SparkSQL_Complet _1.pdf",
+    "page": 22,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "TP3_SparkSQL_Complet _1.pdf"
+  }
+]

@@ -29,7 +29,6 @@ import os
 import json
 import copy
 import pypdfium2 as pdfium
-import google.generativeai as genai
 
 from src.ingest import load_config
 from src.embed_index import build_text_index
@@ -77,12 +76,26 @@ def render_page_image(pdf_path, page_index_0based, scale=2.5):
     return bitmap.to_pil()
 
 
+def make_vision_model(model_name, api_key):
+    """Retourne une fonction (prompt, image) -> texte, avec le SDK google-genai
+    (ou l'ancien google-generativeai s'il est installé à la place)."""
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        return lambda prompt, img: client.models.generate_content(
+            model=model_name, contents=[prompt, img]).text
+    except ImportError:
+        import google.generativeai as genai_old
+        genai_old.configure(api_key=api_key)
+        m = genai_old.GenerativeModel(model_name)
+        return lambda prompt, img: m.generate_content([prompt, img]).text
+
+
 def analyze_pages_with_vision(cfg, max_pages=MAX_PAGES):
     api_key = os.environ.get(cfg["llm"]["api_key_env"])
     if not api_key:
         raise ValueError("Clé API manquante pour l'analyse vision.")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(cfg["llm"]["model"])
+    model = make_vision_model(cfg["llm"]["model"], api_key)
 
     processed_dir = cfg["paths"]["processed_dir"]
     raw_dir = cfg["paths"]["raw_pdf_dir"]
@@ -102,8 +115,7 @@ def analyze_pages_with_vision(cfg, max_pages=MAX_PAGES):
         pdf_path = os.path.join(raw_dir, p["doc"])
         try:
             img = render_page_image(pdf_path, p["page"] - 1)
-            response = model.generate_content([GENERIC_VISION_PROMPT, img])
-            description = response.text.strip()
+            description = (model(GENERIC_VISION_PROMPT, img) or "").strip()
         except Exception as e:
             print(f"[vision] Erreur page {p['page']} : {e}")
             continue
@@ -131,21 +143,21 @@ def analyze_pages_with_vision(cfg, max_pages=MAX_PAGES):
 
 
 if __name__ == "__main__":
-    if not os.path.exists(ACTIVE_POINTER):
-        print("Aucun document actif. Ouvre l'application et charge/active un document d'abord.")
+    from src.corpus import load_selection, list_documents
+
+    selected = load_selection()
+    if not selected:
+        print("Aucun document sélectionné. Ouvre l'application et coche un document d'abord.")
         raise SystemExit(1)
 
-    with open(ACTIVE_POINTER, "r", encoding="utf-8") as f:
-        active = json.load(f)
-
-    print(f"Document actif : {active['filename']}")
-    cfg = build_runtime_cfg(active["hash"])
-
-    nb_added = analyze_pages_with_vision(cfg)
-
-    if nb_added > 0:
-        print("\nReconstruction de l'index texte pour inclure les nouvelles descriptions...")
-        build_text_index(cfg)
-        print("Terminé. Relance l'application (ou pose une nouvelle question) pour en profiter.")
-    else:
-        print("Aucune description ajoutée, index inchangé.")
+    names = {d["hash"]: d["name"] for d in list_documents()}
+    for doc_hash in selected:
+        print(f"Document : {names.get(doc_hash, doc_hash)}")
+        cfg = build_runtime_cfg(doc_hash)
+        nb_added = analyze_pages_with_vision(cfg)
+        if nb_added > 0:
+            print("\nReconstruction de l'index texte pour inclure les nouvelles descriptions...")
+            build_text_index(cfg)
+            print("Terminé. Relance l'application (ou pose une nouvelle question) pour en profiter.")
+        else:
+            print("Aucune description ajoutée, index inchangé.")

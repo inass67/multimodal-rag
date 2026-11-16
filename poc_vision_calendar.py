@@ -20,7 +20,6 @@ Utilisation :
 import os
 import sys
 import pypdfium2 as pdfium
-import google.generativeai as genai
 
 PDF_PATH = "cache/documents/ce70510d4eeaba06/raw/Guide-papillons.pdf"  # chemin réel dans le cache
 PAGE_NUMBER = 37  # numéro de page tel qu'affiché dans le guide (1-indexé)
@@ -40,8 +39,8 @@ def ask_gemini_vision(image, espece):
         print("ERREUR : définis d'abord la variable d'environnement GOOGLE_API_KEY")
         sys.exit(1)
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    from vision_analysis import make_vision_model
+    model = make_vision_model("gemini-3.6-flash", api_key)
 
     prompt = f"""Cette image est une page d'un guide sur les papillons, consacrée à l'espèce "{espece}".
 
@@ -58,8 +57,7 @@ Réponds uniquement avec les mois de début et de fin, et le nombre total de
 mois, sous la forme : "Actif de [mois début] à [mois fin] ([nombre] mois)."
 """
 
-    response = model.generate_content([prompt, image])
-    return response.text
+    return model(prompt, image)
 
 
 if __name__ == "__main__":

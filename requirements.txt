@@ -1,12 +1,28 @@
+# Extraction de documents
 pdfplumber
 pypdfium2
 pytesseract
 pillow
+python-docx
+beautifulsoup4
+requests
+
+# RAG : embeddings, base vectorielle, recherche lexicale
 sentence-transformers
 faiss-cpu
-pyyaml
-streamlit
-google-generativeai
-openai
-numpy
 rank-bm25
+numpy
+
+# LangChain (chaînes LCEL, découpage, chargeurs de documents)
+langchain-core
+langchain-text-splitters
+langchain-community
+docx2txt
+
+# LLM
+google-genai
+openai
+
+# Interface et configuration
+streamlit
+pyyaml

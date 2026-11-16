@@ -1,138 +1,202 @@
-# RAG Multimodal Générique (Texte + Images + OCR)
+# Agent de recherche documentaire (RAG multimodal)
 
-Architecture pensée pour être **indépendante du domaine** : pour changer de sujet
-(papillons → oiseaux → documents administratifs...), tu ne touches à **aucun fichier de code**,
-tu remplaces juste le(s) PDF dans `data/raw/`.
+**Projet n°1 : Agent de recherche documentaire** (catégorie Connaissance et RAG).
 
-## Vue d'ensemble du pipeline
+> **Objectif du sujet :** permettre à un utilisateur d'interroger en langage naturel un corpus
+> de documents hétérogènes et d'obtenir des réponses sourcées.
 
-```
-PDF (data/raw)
-   │
-   ▼
-[1] ingest.py        → texte par page + images extraites (data/processed)
-   │
-   ▼
-[2] chunk_text.py     → chunks de texte avec source (doc, page)
-   │
-   ▼
-[3] ocr_utils.py       → OCR sur les images → chunks supplémentaires
-   │
-   ▼
-[4] embed_index.py    → index FAISS texte (MiniLM) + index FAISS image (CLIP)
-   │
-   ▼
-[5] retrieve.py        → top-k texte + top-k images pour une question
-   │
-   ▼
-[6] generate.py        → réponse LLM (Gemini / OpenAI) à partir du contexte
-   │
-   ▼
-app.py (Streamlit)     → interface question / réponse + images sources
-```
+---
 
-## Plan sur 3 heures (ordre à respecter)
+## 1. Couverture du cahier des charges
 
-| Temps | Étape |
+| Exigence du sujet | Où c'est fait dans le projet |
 |---|---|
-| 0:00–0:15 | Installation des dépendances (voir ci-dessous) |
-| 0:15–0:30 | Déposer le PDF (ta thèse) dans `data/raw/`, lancer `ingest.py` |
-| 0:30–0:45 | Lancer `chunk_text.py` puis `ocr_utils.py`, vérifier `chunks.json` |
-| 0:45–1:30 | Lancer `embed_index.py` (le plus long : téléchargement des modèles + calcul des embeddings) |
-| 1:30–2:00 | Lancer `retrieve.py` en test, ajuster `top_k` si besoin |
-| 2:00–2:30 | Configurer la clé API LLM, tester `generate.py`, lancer `streamlit run app.py` |
-| 2:30–3:00 | Tester 3-5 questions réelles, marge de sécurité pour bugs / slides |
+| **Cherche dans des PDF, articles et bases internes** | `src/loaders.py`, `src/ingest.py`, `src/corpus.py` : PDF (texte + images + OCR), Word `.docx`, `.txt`/`.md`, pages internes `.html`, **articles web par URL**. Plusieurs documents sont interrogés **ensemble** (corpus). |
+| **Résume les sources** | `src/summarize.py` : résumé *map-reduce* d'un document, synthèse comparative du corpus, et résumé de chaque source citée dans chaque réponse (`src/generate.py`). |
+| **Répond avec références** | `src/generate.py` : sources numérotées `[1]`, `[2]`… citées après chaque affirmation, liste des références (document + page/section + lien), citations inventées détectées et retirées. |
+| **LLM** | Gemini (par défaut) ou OpenAI, `src/llm.py`, avec modèles de secours automatiques. |
+| **RAG** | Découpage → embeddings → base vectorielle → recherche hybride → génération ancrée. |
+| **LangChain** | Chaînes LCEL `PromptTemplate \| LLM \| StrOutputParser` (`src/llm.py`), `RecursiveCharacterTextSplitter` (`src/chunk_compare.py`), chargeurs `WebBaseLoader` / `Docx2txtLoader` (`src/loaders.py`), outils de l'agent exportables en `StructuredTool` (`src/agent.py`). |
+| **Vector Database** | FAISS (`IndexFlatIP`, similarité cosinus), un index texte + un index image (CLIP), fusionnés en mémoire pour interroger tout le corpus. |
+| **Agent** | `src/agent.py` : le LLM **choisit l'outil** (rechercher, résumer un document, résumer le corpus, comparer, lister), **vérifie** les citations et **se corrige** (régénération, recherche élargie). Les étapes sont affichées dans l'interface. |
+| **Point clé : qualité du découpage** | `src/chunk_compare.py` : 5 méthodes comparées automatiquement pour chaque document (taille fixe courte/longue, par phrases, récursif maison, LangChain), la meilleure est retenue. |
+| **Point clé : choix de l'embedding** | `src/compare_embeddings.py` : 3 modèles comparés (Recall@k, MRR, coût) ; modèle multilingue `multilingual-e5-small` retenu. |
+| **Point clé : évaluation de la pertinence des citations** | `src/evaluate.py` : jeu de test, Recall@k / Precision@k / MRR (sémantique vs BM25 vs hybride), validité, précision, taux de succès et support sémantique des citations, juge LLM en option. |
+| **Limiter les hallucinations** | Réponse uniquement à partir des sources, « Je ne sais pas » si l'information est absente, contrôle des citations. |
 
-## 1) Installation
+---
 
-### Dépendance système : Tesseract OCR (obligatoire pour l'OCR)
+## 2. Architecture
 
-- Windows : installe le binaire depuis https://github.com/UB-Mannheim/tesseract/wiki
-  puis ajoute-le au PATH (ou renseigne `pytesseract.pytesseract.tesseract_cmd` dans `ocr_utils.py`).
-- Mac : `brew install tesseract`
+```
+ Sources hétérogènes : PDF · DOCX · TXT/MD · HTML interne · article web (URL)
+        │
+        ▼
+ [1] ingest.py / loaders.py  → texte par page (PDF) ou par section (autres) + images
+        │                       + provenance : document, page/section, type, URL
+        ▼
+ [2] chunk_compare.py        → 5 méthodes de découpage comparées, la meilleure est retenue
+        │
+        ▼
+ [3] ocr_utils.py            → OCR (Tesseract) du texte contenu dans les images
+        │
+        ▼
+ [4] embed_index.py          → embeddings multilingual-e5-small → FAISS (texte)
+        │                       + CLIP → FAISS (images)
+        ▼
+ [5] retrieve.py             → recherche HYBRIDE (sémantique + BM25) sur tout le corpus
+        │                       + images (nom propre exact puis CLIP)
+        ▼
+ [6] agent.py                → PLANIFIER (choix de l'outil) → AGIR → VÉRIFIER → RÉPONDRE
+        │        ├─ generate.py   réponse avec citations [n] + résumé des sources
+        │        └─ summarize.py  résumé map-reduce d'un document / du corpus
+        ▼
+ app.py (Streamlit)          → Questions · Résumés · Évaluation  (+ voix, comptes utilisateurs)
+
+ evaluate.py / compare_embeddings.py → rapports dans eval/
+```
+
+| Fichier | Rôle |
+|---|---|
+| `app.py` | Interface : gestion du corpus, questions, résumés, évaluation |
+| `src/corpus.py` | Cache des documents, sélection du corpus, pipeline de traitement |
+| `src/loaders.py` | Chargeurs PDF / DOCX / TXT / MD / HTML / URL |
+| `src/ingest.py` | Extraction texte + images avec provenance |
+| `src/chunk_compare.py` | Comparaison et choix automatique du découpage |
+| `src/chunk_text.py` | Découpage simple (ligne de commande) |
+| `src/ocr_utils.py` | OCR des images |
+| `src/embed_index.py` | Embeddings et index FAISS |
+| `src/retrieve.py` | Recherche hybride multi-documents |
+| `src/llm.py` | Appels LLM + chaînes LangChain |
+| `src/generate.py` | Réponse sourcée et analyse des citations |
+| `src/summarize.py` | Résumés map-reduce |
+| `src/agent.py` | Agent : planification, outils, vérification |
+| `src/evaluate.py` | Jeu de test et métriques |
+| `src/compare_embeddings.py` | Comparaison des modèles d'embedding |
+| `src/auth.py` | Comptes utilisateurs (mots de passe salés et hachés SHA-256) |
+
+---
+
+## 3. Installation
+
+### Tesseract OCR (pour lire le texte dans les images)
+- Windows : installeur sur https://github.com/UB-Mannheim/tesseract/wiki, puis ajouter au PATH.
+- Mac : `brew install tesseract tesseract-lang`
 - Linux : `sudo apt-get install tesseract-ocr tesseract-ocr-fra`
 
+Sans Tesseract, l'application fonctionne quand même : seule l'étape d'OCR est sautée.
+
 ### Dépendances Python
-
-Dans Antigravity IDE, ouvre un terminal sur ce dossier puis :
-
 ```bash
 python -m venv .venv
-# Windows : .venv\Scripts\activate
-# Mac/Linux : source .venv/bin/activate
-
+# Windows : .venv\Scripts\activate      Mac/Linux : source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 2) Clé API LLM
-
-Ce projet utilise **Gemini** par défaut (rapide, quota gratuit généreux, cohérent avec un usage
-dans Antigravity qui est l'IDE de Google).
-
-1. Récupère une clé sur https://aistudio.google.com/apikey
-2. Définis la variable d'environnement :
-
+### Clé API du LLM
+Créer une clé sur https://aistudio.google.com/apikey puis :
 ```bash
 # Windows (PowerShell)
 $env:GOOGLE_API_KEY="ta_cle_ici"
-
 # Mac/Linux
 export GOOGLE_API_KEY="ta_cle_ici"
 ```
+Pour OpenAI : `provider: "openai"`, `model` et `api_key_env: "OPENAI_API_KEY"` dans `config.yaml`.
 
-Si tu préfères OpenAI, change `provider: "openai"` et `model` dans `config.yaml`,
-et définis `OPENAI_API_KEY` à la place.
+---
 
-## 3) Exécution du pipeline (dans l'ordre, une seule fois par nouveau document)
-
-```bash
-# 1. Dépose ta thèse PDF dans data/raw/  (ex: data/raw/these_papillons.pdf)
-
-# 2. Extraction texte + images
-python -m src.ingest
-
-# 3. Chunking
-python -m src.chunk_text
-
-# 4. OCR sur les images extraites
-python -m src.ocr_utils
-
-# 5. Embeddings + index FAISS (texte et images)
-python -m src.embed_index
-```
-
-Vérifie après chaque étape que les fichiers attendus existent bien :
-- `data/processed/pages_raw.json`
-- `data/processed/chunks.json`
-- `index/text.index`, `index/text_meta.json`
-- `index/image.index`, `index/image_meta.json` (si le PDF contient des images)
-
-## 4) Lancer la démo
+## 4. Utilisation
 
 ```bash
 streamlit run app.py
 ```
 
-Pose une question dans l'interface : tu obtiens une réponse générée, les images
-pertinentes avec leur page source, et les extraits de texte utilisés (transparence/traçabilité,
-utile pour la soutenance).
+1. **Créer un compte**, puis se connecter.
+2. **Barre latérale** : ajouter des fichiers (PDF, Word, texte, HTML) ou coller l'URL d'un article,
+   puis cocher les documents à interroger ensemble.
+3. **Onglet « Poser une question »** (au clavier ou à la voix). Exemples :
+   - « Quelles sont les conditions pour demander un congé ? » → recherche avec citations
+   - « Résume le guide des papillons » → résumé du document
+   - « Compare ce que disent les documents sur la sécurité » → comparaison
+   - « Quels documents sont disponibles ? » → liste du corpus
+   La réponse affiche les **références**, le **résumé des sources utilisées**, les **images**,
+   tous les passages retrouvés (cités ou non) et les **étapes suivies par l'agent**.
+4. **Onglet « Résumer les sources »** : résumé d'un document ou synthèse de tout le corpus
+   (téléchargeable en `.md`).
+5. **Onglet « Évaluation »** : voir section 5.
 
-## 5) Pour changer de domaine plus tard (oiseaux, plantes, docs admin...)
+> Les documents déjà traités avec l'ancien modèle d'embedding sont **réindexés automatiquement**
+> au premier chargement (quelques secondes).
 
-1. Vide ou complète `data/raw/` avec les nouveaux PDF.
-2. Relance uniquement les étapes 2 à 5 ci-dessus (`ingest` → `chunk_text` → `ocr_utils` → `embed_index`).
-3. Aucune ligne de code à modifier : la genericité vient du fait que rien n'est codé "en dur"
-   (pas de mot-clé "papillon" nulle part), tout passe par les métadonnées extraites automatiquement.
+---
 
-## Points à mentionner à l'oral (架构 / justification)
+## 5. Évaluation (à montrer à la soutenance)
 
-- **Double index** : un index texte classique (recherche sémantique sur le contenu + l'OCR)
-  et un index image CLIP (recherche cross-modale : la question texte retrouve directement
-  une image sans dépendre uniquement de l'OCR).
-- **Traçabilité** : chaque chunk et chaque image gardent leur document et numéro de page d'origine
-  → réponses avec sources, comme demandé dans le cahier des charges du projet PFA.
-- **Généricité** : le pipeline ne connaît aucun concept métier ; il ingère n'importe quel PDF
-  texte+images. C'est la définition même d'une architecture "domain-agnostic".
-- **Limites assumées (à mentionner honnêtement)** : pas de Neo4j / Graph RAG dans cette version
-  (hors scope du délai de 3h) — c'est une extension possible évoquée dans le rapport comme
-  travail futur, en lien avec le volet Agentic Graph-Vector RAG déjà vu en cours.
+À lancer depuis l'onglet **Évaluation** ou en ligne de commande, sur les documents sélectionnés :
+
+```bash
+python -m src.evaluate --generate --n 15     # crée le jeu de test puis évalue
+python -m src.compare_embeddings             # compare les modèles d'embedding
+python -m src.evaluate --judge               # ré-évalue avec le juge LLM en plus
+```
+
+Résultats dans `eval/` : `evaluation_report.md`, `embeddings_report.md` (+ versions JSON).
+
+**Jeu de test :** le LLM écrit une question à partir de passages tirés au hasard (répartis entre
+les documents). La vérité terrain est la page d'où vient le passage. Le fichier
+`eval/eval_set.json` peut être relu et corrigé à la main.
+
+| Métrique | Ce qu'elle mesure |
+|---|---|
+| Recall@k | La bonne page est-elle parmi les k premiers passages retrouvés ? |
+| Precision@k | Part des k passages qui viennent de la bonne page |
+| MRR | 1 / rang du premier bon passage (1 = toujours en tête) |
+| Taux de réponse | Questions auxquelles l'agent répond (pas « Je ne sais pas ») |
+| Validité des citations | Part des numéros `[n]` qui correspondent à une vraie source |
+| Précision des citations | Part des sources citées qui viennent de la bonne page |
+| Taux de succès des citations | Part des réponses qui citent au moins la bonne source |
+| Support sémantique | Part des phrases citées réellement proches de leur source (similarité ≥ 0,5) |
+| Juge LLM (option) | Le LLM confirme que la source soutient la phrase |
+
+La recherche est évaluée dans 3 configurations (sémantique seule, BM25 seul, hybride) pour
+**justifier le choix de la recherche hybride**.
+
+**Économie du quota LLM :** les métriques de recherche et la comparaison des embeddings ne font
+**aucun** appel au LLM. Seules la génération du jeu de test (1 appel pour 5 questions) et
+l'évaluation des citations (1 appel par question) en font.
+
+---
+
+## 6. Choix techniques à justifier à l'oral
+
+- **Découpage :** il n'existe pas de taille idéale universelle. Le système compare 5 méthodes sur
+  chaque nouveau document avec des métriques sans vérité terrain : cohérence interne d'un passage
+  (similarité entre ses deux moitiés, à maximiser) et redondance entre passages voisins (à minimiser),
+  avec une pénalité pour les passages trop courts ou irréguliers. La meilleure est retenue automatiquement.
+- **Embedding :** `all-MiniLM-L6-v2` (ancien choix) est entraîné surtout sur de l'anglais et
+  `paraphrase-multilingual-MiniLM-L12-v2` tronque les passages à 128 tokens. `multilingual-e5-small`
+  est multilingue, accepte 512 tokens et reste léger (384 dimensions, fonctionne sur CPU, gratuit).
+  Le choix est vérifié par `compare_embeddings.py`.
+- **Recherche hybride :** la recherche sémantique comprend les reformulations, BM25 retrouve les
+  termes exacts (noms propres, codes, chiffres). Les scores normalisés sont combinés
+  (`alpha = 0.5`). Correction apportée : la tokenisation BM25 gérait mal les accents
+  (« été » devenait « t ») ; les accents et les mots vides sont désormais traités.
+- **Base vectorielle FAISS :** rapide, locale, sans serveur. `IndexFlatIP` sur vecteurs normalisés
+  = similarité cosinus exacte. Les index des documents sélectionnés sont fusionnés en mémoire.
+- **Citations :** sources numérotées, consigne stricte de citer après chaque affirmation, numéros
+  inventés détectés puis retirés, régénération si aucune citation. C'est la réponse au risque
+  d'hallucination.
+- **Agent :** boucle planifier → agir → vérifier → répondre. Le planificateur LLM répond en JSON ;
+  un routeur par mots-clés prend le relais si le LLM est indisponible (robustesse).
+- **Multimodal :** images indexées avec CLIP, OCR des images, recherche d'image exacte par nom propre.
+- **Généricité :** aucun mot-clé métier dans le code ; changer de domaine = changer de documents.
+
+## 7. Limites et perspectives
+
+- Le jeu de test synthétique favorise les questions proches du texte : un jeu annoté à la main
+  donnerait une mesure plus exigeante.
+- La précision des citations ne compte comme correcte que la page d'origine de la question ; une
+  autre page contenant la même information est comptée fausse (mesure prudente). Le support
+  sémantique et le juge LLM compensent ce biais.
+- Perspectives : base vectorielle persistante avec filtres (Chroma, Qdrant), reranking par
+  cross-encoder, mémoire de conversation, Graph RAG.

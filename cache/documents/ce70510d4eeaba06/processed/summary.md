@@ -1,0 +1,13 @@
+**Sujet** : Ce document est un guide sur les papillons de jour présentant les caractéristiques biologiques et comportementales de nombreuses espèces, tout en mettant en avant les programmes de sciences participatives destinés à suivre l'évolution de leurs populations.
+
+**Points clés** :
+* Les observatoires de sciences participatives (Opération Papillons, Propage, Observatoire Agricole de la Biodiversité), intégrés au programme Vigie-Nature du Muséum national d'Histoire naturelle, permettent d'étudier les papillons selon des protocoles stricts (relevés entre 11h et 17h par beau temps) (pages 5 et 73).
+* Malgré le fait que seuls 4 à 5 % des lépidoptères soient diurnes et qu'un déclin de 30 % des papillons de prairie européens ait été mesuré en 25 ans, les données citoyennes montrent l'efficacité de mesures comme la réduction des pesticides, les fauches tardives et la présence de haies (pages 4, 6 et 73).
+* Rédigé par Anne Dozières, Julie Valarcher et Zoé Clément pour l'association Noé, ce guide publié en 2017 et réimprimé en 2022 propose un index détaillé des espèces et de leurs regroupements (pages 71, 72, 73 et 74).
+* Les papillons adoptent des stratégies de thermorégulation et de vol variées : exposition au soleil ailes ouvertes (Cuivré commun, Mégère), repos sous les herbes par temps couvert (Demi-Deuil) ou cohabitation par séparation de la hauteur de vol (Flambé et Machaon) (pages 20, 33, 50 et 60).
+* Les cycles de vie et la longévité sont très variables, allant de papillons produisant 1 à 3 générations par an (Machaon, Azuré porte-queue, Pacha à deux queues) au Citron qui détient un record de longévité adulte de 12 mois (pages 19, 22, 31 et 44).
+* La survie hivernale prend diverses formes : au stade adulte pour le Citron, le Paon du jour et le Vulcain, sous forme de chenille chez le Céphale, la Sylvaine ou le Tabac d'Espagne, ou à n'importe quel stade de développement chez le Petit Nacré (pages 22, 36, 37, 45, 46, 58 et 62).
+* Différentes espèces font preuve de comportements remarquables, à l'image du Souci et de l'Azuré porte-queue qui migrent, de la chenille de la Goutte de sang qui devient toxique, ou du Brun des pélargoniums, espèce originaire d'Afrique du Sud observée en France depuis 1997 et proliférant sans prédateurs naturels (pages 23, 31, 32 et 64).
+
+**À retenir** : 
+Grâce à la mobilisation de milliers de participants aux protocoles de sciences participatives, ce guide illustre comment l'observation des comportements et des cycles de vie des papillons aide à mesurer l'impact des activités humaines et à guider la préservation de la biodiversité.

@@ -6,7 +6,8 @@ Méthodes testées :
 1. fixed_small     : découpage par taille fixe (mots), chunks courts
 2. fixed_large     : découpage par taille fixe (mots), chunks longs (config actuelle)
 3. by_sentence     : découpage par groupes de phrases
-4. recursive_like  : découpage hiérarchique (paragraphe -> phrase -> mot), à la LangChain
+4. recursive_like  : découpage hiérarchique (paragraphe -> phrase -> mot), implémentation maison
+5. langchain_recursive : RecursiveCharacterTextSplitter de LangChain (référence du marché)
 
 Métriques calculées (sous-ensemble du tableau du cours, calculable sans jeu de
 questions/réponses de référence, qu'on n'a pas dans le temps imparti) :
@@ -16,9 +17,10 @@ questions/réponses de référence, qu'on n'a pas dans le temps imparti) :
 - Similarité intra (cohérence interne d'un chunk : similarité entre sa 1ère et sa 2e moitié)
 - Similarité inter (redondance entre chunks : similarité moyenne entre chunks voisins)
 
-Recall@k / Precision@k / F1-score du tableau du cours nécessitent un jeu de
-questions-réponses annotées manuellement (vérité terrain), qu'on n'a pas ici faute
-de temps -> non calculés, mentionné explicitement dans le rapport de sortie.
+Ces métriques sont « intrinsèques » (aucune vérité terrain nécessaire) et
+permettent de choisir automatiquement le découpage à chaque nouveau document.
+Les métriques « extrinsèques » (Recall@k, Precision@k, MRR, pertinence des
+citations) sont calculées par src/evaluate.py sur un jeu de questions.
 
 La méthode gagnante (meilleur compromis cohérence/non-redondance) est utilisée
 pour régénérer chunks.json, en conservant la métadonnée (doc, page, images).
@@ -28,7 +30,6 @@ import os
 import re
 import statistics
 import numpy as np
-from sentence_transformers import SentenceTransformer
 from src.ingest import load_config
 
 
@@ -106,6 +107,18 @@ METHODS = {
     "recursive_like (para->phrase, ~180 mots)": lambda t: recursive_like(t, 180, 30),
 }
 
+# Méthode LangChain : ajoutée seulement si la bibliothèque est installée
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    _lc_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, chunk_overlap=150,
+        separators=["\n\n", "\n", ". ", " ", ""],
+    )
+    METHODS["langchain_recursive (LangChain, 1000 car. / 150)"] = _lc_splitter.split_text
+except Exception:
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Métriques
@@ -182,7 +195,8 @@ def main(cfg=None):
         pages = json.load(f)
 
     print("Chargement du modèle d'embedding (peut prendre quelques secondes)...")
-    model = SentenceTransformer(cfg["embeddings"]["text_model"])
+    from src.embed_index import get_embedding_model
+    model = get_embedding_model(cfg["embeddings"]["text_model"])
 
     results = {}
     chunks_by_method = {}
@@ -199,6 +213,8 @@ def main(cfg=None):
                     "doc": p["doc"],
                     "page": p["page"],
                     "image_paths": p["image_paths"],
+                    "source_type": p.get("source_type", "pdf"),
+                    "source": p.get("source", p["doc"]),
                 })
         texts_only = [c["content"] for c in method_chunks]
         metrics = compute_metrics(texts_only, model)
@@ -221,15 +237,14 @@ def main(cfg=None):
 
     best_name = max(results, key=lambda n: results[n]["score"])
     print(f"\n>>> Méthode retenue automatiquement : {best_name} (score={results[best_name]['score']})")
-    print(">>> Note méthodologique : Recall@k, Precision@k et F1-score du tableau du cours")
-    print("    nécessitent une vérité terrain (questions/réponses annotées manuellement),")
-    print("    non disponible dans le temps imparti -> non calculés ici, à mentionner en limite du travail.")
+    print(">>> Les métriques Recall@k / Precision@k / MRR sont calculées séparément par")
+    print("    src/evaluate.py, sur un jeu de questions généré à partir du corpus.")
 
     # --- Sauvegarde du rapport comparatif ---
     report = {
         "results": results,
         "best_method": best_name,
-        "note": "Recall@k / Precision@k / F1-score non calculés : nécessitent une vérité terrain annotée manuellement.",
+        "note": "Métriques intrinsèques (sans vérité terrain). Les métriques Recall@k / Precision@k / MRR sont calculées par src/evaluate.py.",
     }
     with open(os.path.join(processed_dir, "chunking_comparison_report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
@@ -245,6 +260,8 @@ def main(cfg=None):
             "doc": c["doc"],
             "page": c["page"],
             "image_paths": c["image_paths"],
+            "source_type": c["source_type"],
+            "source": c["source"],
         })
     with open(os.path.join(processed_dir, "chunks.json"), "w", encoding="utf-8") as f:
         json.dump(final_chunks, f, ensure_ascii=False, indent=2)

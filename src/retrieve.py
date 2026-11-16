@@ -4,6 +4,7 @@ Etape 5 - Retrieval HYBRIDE + recherche déterministe par nom propre
 Trois mécanismes complémentaires, utilisés dans cet ordre de priorité :
 
 1. RECHERCHE TEXTE HYBRIDE (sémantique + BM25) : cf. TP3-RAG Partie 3 du cours.
+   Fonctionne sur un CORPUS de plusieurs documents (index fusionnés).
 
 2. RECHERCHE IMAGE DÉTERMINISTE PAR NOM PROPRE (nouveau, PRIORITAIRE) :
    si la question contient un nom propre (ex: "Pierre Bernard") qui apparaît
@@ -22,15 +23,38 @@ Trois mécanismes complémentaires, utilisés dans cet ordre de priorité :
 import json
 import os
 import re
+import unicodedata
 import numpy as np
-import faiss
-from sentence_transformers import SentenceTransformer
-from rank_bm25 import BM25Okapi
 from src.ingest import load_config
+from src.embed_index import encode_texts, get_embedding_model, read_index_info
+
+# Mots vides français/anglais retirés pour le BM25 (sinon "le", "de", "the"...
+# dominent le score lexical sans apporter d'information).
+STOPWORDS = set("""
+le la les un une des du de d l au aux et ou en dans sur pour par avec sans ce
+cet cette ces qui que quoi dont est sont etre a ont il elle ils elles on nous
+vous je tu me te se y ne pas plus quel quelle quels quelles comment pourquoi
+quand the of and or to in on for with is are be what which how why when
+""".split())
+
+
+def strip_accents(text):
+    return "".join(c for c in unicodedata.normalize("NFD", text)
+                   if unicodedata.category(c) != "Mn")
 
 
 def tokenize(text):
-    return re.findall(r"[a-z0-9]+", text.lower())
+    """Tokenisation pour BM25 : minuscules, accents retirés, mots vides retirés.
+    (Correction : l'ancienne version [a-z0-9]+ coupait les mots accentués,
+    ex. "été" devenait "t", ce qui faussait la recherche sur des textes français.)"""
+    tokens = re.findall(r"\w+", strip_accents(text.lower()))
+    return [t for t in tokens if t not in STOPWORDS and len(t) > 1]
+
+
+def location_label(meta):
+    """'page 12' pour un PDF, 'section 3' pour les autres sources."""
+    unit = "page" if meta.get("source_type", "pdf") == "pdf" else "section"
+    return f"{unit} {meta['page']}"
 
 
 # Détecte les séquences de mots commençant par une majuscule (noms propres
@@ -53,23 +77,52 @@ def extract_single_word_candidates(query):
 
 
 class Retriever:
-    def __init__(self, config):
-        self.config = config
-        index_dir = config["paths"]["index_dir"]
+    """Moteur de recherche sur UN ou PLUSIEURS documents (corpus).
 
-        self.text_model = SentenceTransformer(config["embeddings"]["text_model"])
-        self.text_index = faiss.read_index(os.path.join(index_dir, "text.index"))
-        with open(os.path.join(index_dir, "text_meta.json"), "r", encoding="utf-8") as f:
-            self.text_meta = json.load(f)
+    `index_dirs` : liste des dossiers d'index à interroger ensemble. Les
+    vecteurs de chaque document sont fusionnés dans un seul index FAISS en
+    mémoire, ce qui permet d'interroger tout le corpus d'un coup et de
+    comparer équitablement les passages de documents différents.
+    """
+
+    def __init__(self, config, index_dirs=None):
+        import faiss
+        from rank_bm25 import BM25Okapi
+
+        self.config = config
+        index_dirs = index_dirs or [config["paths"]["index_dir"]]
+        self.text_model_name = config["embeddings"]["text_model"]
+
+        # --- Fusion des index TEXTE ---
+        vectors, self.text_meta = [], []
+        for d in index_dirs:
+            info = read_index_info(d)
+            if info.get("text_model") != self.text_model_name:
+                raise ValueError(
+                    f"L'index {d} a été construit avec {info.get('text_model')} "
+                    f"mais la config utilise {self.text_model_name} : réindexer ce document."
+                )
+            idx = faiss.read_index(os.path.join(d, "text.index"))
+            with open(os.path.join(d, "text_meta.json"), "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            if idx.ntotal:
+                vectors.append(idx.reconstruct_n(0, idx.ntotal))
+            self.text_meta.extend(meta)
+        for m in self.text_meta:
+            m.setdefault("source_type", "pdf")
+            m.setdefault("source", m["doc"])
+
+        dim = vectors[0].shape[1] if vectors else 384
+        self.text_index = faiss.IndexFlatIP(dim)
+        if vectors:
+            self.text_index.add(np.vstack(vectors).astype("float32"))
 
         corpus_tokens = [tokenize(c["content"]) for c in self.text_meta]
         self.bm25 = BM25Okapi(corpus_tokens) if corpus_tokens else None
+        self.doc_names = sorted({c["doc"] for c in self.text_meta})
 
-        # Registre des noms complets réellement présents dans le document
-        # (ex: "Monique Thomas"), et association de chaque mot du nom
-        # ("monique", "thomas") vers le(s) nom(s) complet(s) correspondant(s).
-        # Permet de reconnaître une question tapée avec un seul mot du nom
-        # (ex: juste "Thomas") et de la relier au bon nom complet.
+        # Registre des noms propres complets présents dans le corpus
+        # (ex: "Monique Thomas") et association mot -> nom(s) complet(s).
         self.known_full_names = set()
         self.name_token_map = {}
         for c in self.text_meta:
@@ -78,26 +131,40 @@ class Retriever:
                 for word in full_name.split():
                     self.name_token_map.setdefault(word.lower(), set()).add(full_name)
 
+        # --- Fusion des index IMAGE ---
         self.image_index = None
         self.image_meta = []
+        img_vectors = []
+        for d in index_dirs:
+            p = os.path.join(d, "image.index")
+            if os.path.exists(p):
+                idx = faiss.read_index(p)
+                with open(os.path.join(d, "image_meta.json"), "r", encoding="utf-8") as f:
+                    self.image_meta.extend(json.load(f))
+                if idx.ntotal:
+                    img_vectors.append(idx.reconstruct_n(0, idx.ntotal))
         self.clip_model = None
-        img_index_path = os.path.join(index_dir, "image.index")
-        if os.path.exists(img_index_path):
-            self.clip_model = SentenceTransformer(config["embeddings"]["clip_model"])
-            self.image_index = faiss.read_index(img_index_path)
-            with open(os.path.join(index_dir, "image_meta.json"), "r", encoding="utf-8") as f:
-                self.image_meta = json.load(f)
+        if img_vectors:
+            self.clip_model = get_embedding_model(config["embeddings"]["clip_model"])
+            all_img = np.vstack(img_vectors).astype("float32")
+            self.image_index = faiss.IndexFlatIP(all_img.shape[1])
+            self.image_index.add(all_img)
 
     # -----------------------------------------------------------------
     # Recherche texte hybride (sémantique + BM25)
     # -----------------------------------------------------------------
-    def retrieve_text(self, query, k=None, candidate_k=20, alpha=0.5):
+    def retrieve_text(self, query, k=None, candidate_k=20, alpha=None, doc_filter=None):
+        """Recherche hybride : score = alpha * sémantique + (1 - alpha) * BM25.
+        `doc_filter` : liste de noms de documents pour restreindre la recherche."""
         k = k or self.config["retrieval"]["top_k_text"]
+        alpha = self.config["retrieval"].get("alpha", 0.5) if alpha is None else alpha
         n_docs = len(self.text_meta)
         if n_docs == 0:
             return []
+        if doc_filter:
+            candidate_k = n_docs  # on doit pouvoir trouver des passages du document ciblé
 
-        q_emb = self.text_model.encode([query], normalize_embeddings=True).astype("float32")
+        q_emb = encode_texts(self.text_model_name, [query], is_query=True)
         sem_k = min(max(candidate_k, k), n_docs)
         sem_scores, sem_idxs = self.text_index.search(q_emb, sem_k)
         sem_score_map = {}
@@ -118,11 +185,15 @@ class Retriever:
 
         results = []
         for idx in candidates:
+            meta = self.text_meta[idx]
+            if doc_filter and meta["doc"] not in doc_filter:
+                continue
             sem_norm = sem_score_map.get(idx, 0.0) / max_sem
             bm25_norm = bm25_score_map.get(idx, 0.0) / max_bm25
             combined = alpha * sem_norm + (1 - alpha) * bm25_norm
-            meta = self.text_meta[idx]
-            results.append({**meta, "score": float(combined)})
+            results.append({**meta, "score": float(combined),
+                            "semantic_score": sem_score_map.get(idx, 0.0),
+                            "loc": location_label(meta)})
 
         results = sorted(results, key=lambda x: x["score"], reverse=True)[:k]
         return results
@@ -172,10 +243,9 @@ class Retriever:
             # Plusieurs pages mentionnent ce nom -> on les classe par
             # similarité sémantique avec la question complète, pour
             # privilégier la page la plus probablement recherchée.
-            q_emb = self.text_model.encode([query], normalize_embeddings=True)[0]
-            contents = [self.text_meta[i]["content"] for i in matched_indices]
-            chunk_embs = self.text_model.encode(contents, normalize_embeddings=True)
-            scores = chunk_embs @ q_emb
+            q_emb = encode_texts(self.text_model_name, [query], is_query=True)[0]
+            scores = np.array([float(self.text_index.reconstruct(int(i)) @ q_emb)
+                               for i in matched_indices])
 
             ranked = sorted(zip(matched_indices, scores), key=lambda x: x[1], reverse=True)
             ordered_pages = []
@@ -207,7 +277,7 @@ class Retriever:
         candidate_k = min(30, self.image_index.ntotal) if self.image_index.ntotal else 0
         if candidate_k == 0:
             return []
-        q_emb = self.clip_model.encode([query], normalize_embeddings=True).astype("float32")
+        q_emb = np.asarray(self.clip_model.encode([query], normalize_embeddings=True), dtype="float32")
         scores, idxs = self.image_index.search(q_emb, candidate_k)
         results = []
         for score, idx in zip(scores[0], idxs[0]):
@@ -220,15 +290,18 @@ class Retriever:
     # -----------------------------------------------------------------
     # Point d'entrée principal
     # -----------------------------------------------------------------
-    def retrieve(self, query):
-        text_results = self.retrieve_text(query)
+    def retrieve(self, query, doc_filter=None, k=None):
+        text_results = self.retrieve_text(query, k=k, doc_filter=doc_filter)
         top_k_images = self.config["retrieval"]["top_k_images"]
 
         # PRIORITÉ 1 : nom propre détecté et trouvé textuellement -> réponse
         # déterministe, classée par pertinence réelle, aucune ambiguïté.
         exact_pages_ordered = self.find_pages_by_exact_name(query)
         if exact_pages_ordered:
-            image_results = self.get_images_by_pages(exact_pages_ordered)[:top_k_images]
+            image_results = self.get_images_by_pages(exact_pages_ordered)
+            if doc_filter:
+                image_results = [m for m in image_results if m["doc"] in doc_filter]
+            image_results = image_results[:top_k_images]
             return text_results, image_results
 
         # PRIORITÉ 2 (secours) : pas de nom propre -> recherche visuelle CLIP.
@@ -237,11 +310,12 @@ class Retriever:
         # n'a aucun rapport avec une photo). On filtre donc par un score de
         # confiance minimum AVANT tout boost, pour ne rien afficher plutôt
         # que d'afficher des images sans rapport.
-        anchor_text_results = self.retrieve_text(query, k=15)
+        anchor_text_results = self.retrieve_text(query, k=15, doc_filter=doc_filter)
         image_candidates = self.retrieve_images_semantic(query)
 
         min_score = self.config["retrieval"].get("min_image_score", 0.18)
-        image_candidates = [img for img in image_candidates if img["score"] >= min_score]
+        image_candidates = [img for img in image_candidates if img["score"] >= min_score
+                            and (not doc_filter or img["doc"] in doc_filter)]
 
         top_pages_by_doc = {}
         for r in anchor_text_results:

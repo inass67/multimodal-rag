@@ -1,0 +1,92 @@
+[
+  {
+    "id": 0,
+    "type": "text",
+    "content": "Image and Audio Processing: Presentations\nNo. Area Presentation Topic Suggested Presentation Scope Student 1 Student 2\n1 Image Image Noise and Denoising Explain common noise types and compare mean, median and Gaussian filters. 2 Image Image Annotation for Deep Learning Present labels, bounding boxes and masks with a small annotation example. 3 Image Image Descriptors Introduce color histograms, texture and shape descriptors with simple comparisons. 4 Image Low-Light Image Enhancement Compare brightness adjustment, gamma correction and histogram equalization.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 1,
+    "type": "text",
+    "content": "5 Image / Video Change Detection in a Fixed Scene Explain image subtraction and detection of added, removed or moved objects. 6 Image Image Resolution Enhancement Compare nearest-neighbor, bilinear and bicubic interpolation; introduce super-resolution. 7 Image Face Recognition Explain detection, feature extraction and matching using an existing demonstration. 8 Image / Video Hand Gesture Recognition Present hand keypoints and recognition of a few simple gestures. 9 Image Text Detection and Recognition in Images Explain how text is located and recognized in an image.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 2,
+    "type": "text",
+    "content": "10 Image / Video Face Detection and Tracking in Video Explain face detection and frame-to-frame tracking with a short video example. 11 Image OCR-Based Information Extraction from Images and PDFs Show how OCR can extract a few fields from a receipt or scanned document. 12 Image Identity Verification: ID Cards and Selfies Explain face comparison using fictional or consented examples and discuss common errors. 13 Image License Plate Detection and Recognition Present the stages of plate localization, character extraction and recognition. 14 Image / Video Traffic Sign Recognition Explain recognition of a few traffic sign classes; real-time processing is optional.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 3,
+    "type": "text",
+    "content": "15 Image Introduction to Medical Image Processing Present contrast enhancement and simple segmentation on one medical image type. 16 Image / Video Human Pose Estimation with OpenPose Explain body keypoints and show a ready-made example; model training is optional. 17 Image Object Detection and Counting with Classical Methods Explain thresholding, morphology and contours using simple objects. 18 Image Document Perspective Correction Explain document corners, perspective transformation and image straightening. 19 Image Measuring Object Dimensions in Images Explain pixel-to-length conversion using a visible reference object.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 4,
+    "type": "text",
+    "content": "20 Image Image Search by Visual Similarity Compare images using simple color or shape descriptors. 21 Image Image Classification with Transfer Learning Explain classification and reuse of a pretrained model through a simple example. 22 Image Visual Detection of Industrial Defects Present examples of scratches or cracks and simple detection methods. 23 Image Visual Anomaly Detection Explain normal versus unusual appearance using reference-image comparisons. 24 Image Detection of Personal Protective Equipment Explain helmet or vest detection with an existing model demonstration.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 5,
+    "type": "text",
+    "content": "25 Image Image Segmentation and Object Area Measurement Explain thresholding or clustering and estimate an object area in pixels. 26 Image Plant Leaf Disease Recognition Present visible symptoms and the basic image classification workflow. 27 Image / Video Parking Space Occupancy Detection Explain how image regions can be classified as free or occupied. 28 Image / Video Vehicle Counting and Tracking Present detection, tracking and line-crossing counts with a short example. 29 Image / Video Introduction to Human Action Recognition Explain recognition of a few simple actions with an existing demonstration.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 6,
+    "type": "text",
+    "content": "30 Image Introduction to Depth Estimation and 3D Vision Explain depth cues and stereo vision using illustrations or a ready-made example. 32 Audio Digital Audio: Sampling and Quantization Explain sample rate, bit depth and their effects on sound quality. 33 Audio Audio Waveforms and Basic Measurements Show amplitude, duration, energy and volume using a short recording. 34 Audio Frequency Analysis and Spectrograms Explain frequency components and compare waveforms with spectrograms. 35 Audio Audio Noise Reduction Present background noise and basic filtering with before-and-after examples.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 7,
+    "type": "text",
+    "content": "36 Audio Silence and Voice Activity Detection Explain energy thresholds to distinguish speech segments from silence. 37 Audio Speech Recognition Explain speech-to-text and demonstrate transcription of a short recording. 38 Audio Speaker Recognition Explain speaker features and the difference between recognition and verification. 39 Audio Environmental Sound Classification Present a small set of sounds such as rain, applause and car horns. 40 Audio Audio Compression and File Formats Compare WAV, MP3 and lossless formats in terms of size and quality.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  },
+  {
+    "id": 8,
+    "type": "text",
+    "content": "41 Audio Echo and Reverberation in Audio Explain delayed reflections and illustrate their effects on a recording. 42 Audio Basic Audio Editing and Effects Present trimming, normalization, fades and playback-speed changes. 43 Audio Call Center Audio Analysis Present transcription, speaking time and silence detection as descriptive indicators.",
+    "doc": "Artificial Vision Projects.pdf",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Artificial Vision Projects.pdf"
+  }
+]

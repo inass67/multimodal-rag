@@ -1,7 +1,8 @@
 """
-Etape 2 - Chunking
-Découpe le texte de chaque page en chunks avec chevauchement,
-en conservant la source (doc, page) et les images associées à la page.
+Étape 2 - Chunking simple (taille fixe en mots, avec chevauchement).
+Utilisé en ligne de commande. L'application utilise chunk_compare.py, qui
+compare plusieurs méthodes et garde automatiquement la meilleure.
+La provenance (doc, page, type de source, URL, images) est conservée.
 """
 import json
 import os
@@ -31,8 +32,7 @@ def build_chunks(config):
     all_chunks = []
     chunk_id = 0
     for p in pages:
-        text_chunks = simple_chunk(p["text"], chunk_size, overlap)
-        for tc in text_chunks:
+        for tc in simple_chunk(p["text"], chunk_size, overlap):
             if len(tc.strip()) < 5:
                 continue
             all_chunks.append({
@@ -42,6 +42,8 @@ def build_chunks(config):
                 "doc": p["doc"],
                 "page": p["page"],
                 "image_paths": p["image_paths"],
+                "source_type": p.get("source_type", "pdf"),
+                "source": p.get("source", p["doc"]),
             })
             chunk_id += 1
 
@@ -53,5 +55,4 @@ def build_chunks(config):
 
 
 if __name__ == "__main__":
-    cfg = load_config()
-    build_chunks(cfg)
+    build_chunks(load_config())

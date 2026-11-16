@@ -1,0 +1,5 @@
+{
+  "text_model": "intfloat/multilingual-e5-small",
+  "nb_chunks": 10,
+  "clip_model": "clip-ViT-B-32"
+}

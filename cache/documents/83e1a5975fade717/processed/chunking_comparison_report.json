@@ -1,0 +1,46 @@
+{
+  "results": {
+    "fixed_small (100 mots / 20 overlap)": {
+      "nb_chunks_total": 77,
+      "longueur_moyenne_mots": 84.6,
+      "ecart_type_longueur": 26.5,
+      "similarite_intra": 0.8913,
+      "similarite_inter": 0.914,
+      "score": -0.0227
+    },
+    "fixed_large (220 mots / 40 overlap)": {
+      "nb_chunks_total": 42,
+      "longueur_moyenne_mots": 146.6,
+      "ecart_type_longueur": 73.3,
+      "similarite_intra": 0.8985,
+      "similarite_inter": 0.9024,
+      "score": -0.0039
+    },
+    "by_sentence (5 phrases/chunk)": {
+      "nb_chunks_total": 36,
+      "longueur_moyenne_mots": 151.0,
+      "ecart_type_longueur": 97.9,
+      "similarite_intra": 0.9002,
+      "similarite_inter": 0.8838,
+      "score": 0.0164
+    },
+    "recursive_like (para->phrase, ~180 mots)": {
+      "nb_chunks_total": 43,
+      "longueur_moyenne_mots": 141.0,
+      "ecart_type_longueur": 49.4,
+      "similarite_intra": 0.9092,
+      "similarite_inter": 0.9121,
+      "score": -0.0029
+    },
+    "langchain_recursive (LangChain, 1000 car. / 150)": {
+      "nb_chunks_total": 66,
+      "longueur_moyenne_mots": 91.2,
+      "ecart_type_longueur": 30.2,
+      "similarite_intra": 0.8933,
+      "similarite_inter": 0.915,
+      "score": -0.0217
+    }
+  },
+  "best_method": "by_sentence (5 phrases/chunk)",
+  "note": "Métriques intrinsèques (sans vérité terrain). Les métriques Recall@k / Precision@k / MRR sont calculées par src/evaluate.py."
+}

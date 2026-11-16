@@ -1,0 +1,50 @@
+[
+  {
+    "doc": "Guide_Installation_Spark_Docker.pdf",
+    "page": 1,
+    "text": "TRAVAUX PRATIQUES — ECOSYSTEME BIG DATA 2\nGuide d'installation\nSpark 4.0 + JupyterLab avec Docker\nCe guide permet d'installer un environnement Spark prêt à l'emploi en quelques minutes. Rien n'est\ninstallé sur votre machine : Spark et Jupyter tournent uniquement dans un conteneur Docker.\n1. Prérequis\n• Docker Desktop installé et démarré : https://www.docker.com/products/docker-desktop\n• 8 Go de RAM minimum (Docker Desktop doit disposer d'au moins 4 Go)\n• Un terminal (PowerShell sous Windows, Terminal sous Mac/Linux)\nVérifiez l'installation :\ndocker --version\ndocker compose version\n2. Préparer le projet\nCréez un dossier de travail avec cette structure :\nmon-bigdata/\n├── docker-compose.yml\n└── work/ # vos notebooks et données (créé automatiquement)\nDans mon-bigdata, créez le fichier docker-compose.yml avec ce contenu :\nservices:\nspark:\nimage: quay.io/jupyter/pyspark-notebook:spark-4.0.0\ncontainer_name: spark-jupyter\nports:\n- \"8888:8888\" # JupyterLab\n- \"4040:4040\" # Spark UI\n- \"4041:4041\" # Spark UI (second shell)\nenvironment:\n- JUPYTER_ENABLE_LAB=yes\n- JUPYTER_TOKEN=bigdata # mot de passe de connexion\nvolumes:\n- ./work:/home/jovyan /work\nnetworks:\n- bigdata\nnetworks:\nbigdata:\nname: bigdata\n1",
+    "image_paths": [
+      "cache/documents\\801702b8f8983db9\\processed\\images\\Guide_Installation_Spark_Docker_p1_0.png"
+    ],
+    "source_type": "pdf",
+    "source": "Guide_Installation_Spark_Docker.pdf"
+  },
+  {
+    "doc": "Guide_Installation_Spark_Docker.pdf",
+    "page": 2,
+    "text": "TRAVAUX PRATIQUES — ECOSYSTEME BIG DATA 2\nLe réseau bigdata sera réutilisé plus tard pour ajouter Kafka et Airflow.\n3. Lancer l'environnement\nDans le dossier mon-bigdata :\ndocker compose up -d\nLe premier lancement télécharge l'image (environ 4 Go) : il est normal que ce soit long.\nCommandes utiles :\nAction Commande\nDémarrer docker compose up -d\nVoir les logs docker compose logs -f\nArrêter docker compose down\nVoir les conteneurs actifs docker ps\n4. Se connecter à JupyterLab\n• Ouvrez http://localhost:8888\n• Saisissez le token : bigdata\n• Cliquez sur Log in\nOu directement : http://localhost:8888/lab?token=bigdata\n2",
+    "image_paths": [
+      "cache/documents\\801702b8f8983db9\\processed\\images\\Guide_Installation_Spark_Docker_p2_0.png"
+    ],
+    "source_type": "pdf",
+    "source": "Guide_Installation_Spark_Docker.pdf"
+  },
+  {
+    "doc": "Guide_Installation_Spark_Docker.pdf",
+    "page": 3,
+    "text": "TRAVAUX PRATIQUES — ECOSYSTEME BIG DATA 2\n5. Tester Spark\nDans JupyterLab, créez un notebook Python (dans le dossier work) et exécutez :\nfrom pyspark.sql import SparkSession\nspark = SparkSession.builder.appName(\"test\").getOrCreate()\nprint(spark.version) # doit afficher 4.0.x\nspark.range(10).show()\nL'interface Spark UI est visible sur http://localhost:4040 tant qu'une session est active.\n6. Lancer spark-shell / pyspark\nDepuis votre terminal\ndocker exec -it spark-jupyter spark-shell # Scala\ndocker exec -it spark-jupyter pyspark # Python\n3",
+    "image_paths": [
+      "cache/documents\\801702b8f8983db9\\processed\\images\\Guide_Installation_Spark_Docker_p3_0.png"
+    ],
+    "source_type": "pdf",
+    "source": "Guide_Installation_Spark_Docker.pdf"
+  },
+  {
+    "doc": "Guide_Installation_Spark_Docker.pdf",
+    "page": 4,
+    "text": "TRAVAUX PRATIQUES — ECOSYSTEME BIG DATA 2\nDepuis JupyterLab\nMenu File > New > Terminal, puis tapez spark-shell ou pyspark.\nPour quitter : :quit (Scala), exit() (PySpark) ou Ctrl+D.\n7. Travailler avec vos fichiers\nTout ce qui est dans le dossier work de votre machine est visible dans le conteneur sous\n/home/jovyan/work.\nEnregistrez toujours vos notebooks et données dans `work`, sinon ils seront perdus quand le\nconteneur est supprimé.\ndf = spark.read.csv(\"/home/jovyan/work/mon_fichier.csv\", header=True,\ninferSchema=True)\ndf.show()\n8. Problèmes fréquents\nLe port 8888 est déjà utilisé (un Jupyter local tourne peut-être)\nArrêtez le Jupyter local, ou changez le port dans le compose :\nports:\n- \"8889:8888\"\nPuis ouvrez http://localhost:8889.\nLe token est refusé\nRecréez le conteneur :\ndocker compose down\ndocker compose up -d\n4",
+    "image_paths": [
+      "cache/documents\\801702b8f8983db9\\processed\\images\\Guide_Installation_Spark_Docker_p4_0.png"
+    ],
+    "source_type": "pdf",
+    "source": "Guide_Installation_Spark_Docker.pdf"
+  },
+  {
+    "doc": "Guide_Installation_Spark_Docker.pdf",
+    "page": 5,
+    "text": "TRAVAUX PRATIQUES — ECOSYSTEME BIG DATA 2\nOu lisez le token réel dans les logs avec docker compose logs spark (cherchez la ligne\ncontenant token=).\nErreur de droits sur le dossier work (Linux)\nmkdir -p work && sudo chown 1000:100 work\nSpark manque de mémoire\nAugmentez la mémoire allouée à Docker Desktop (Settings > Resources), ou dans le notebook :\nspark = SparkSession.builder.config(\"spark.driver.memory\", \"4g\").getOrCreate()\nDocker ne démarre pas sous Windows\nVérifiez que la virtualisation est activée dans le BIOS et que WSL 2 est installé (wsl --install\ndans PowerShell administrateur).\n9. Pour aller plus loin\nCet environnement fonctionne en mode local[*] (un seul conteneur, sans cluster), suffisant pour\napprendre Spark. Les services Kafka et Airflow pourront être ajoutés plus tard au même docker-\ncompose.yml, sur le réseau bigdata.\n5",
+    "image_paths": [],
+    "source_type": "pdf",
+    "source": "Guide_Installation_Spark_Docker.pdf"
+  }
+]

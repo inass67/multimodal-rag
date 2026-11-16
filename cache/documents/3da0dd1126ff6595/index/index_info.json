@@ -1,0 +1,4 @@
+{
+  "text_model": "intfloat/multilingual-e5-small",
+  "nb_chunks": 21
+}

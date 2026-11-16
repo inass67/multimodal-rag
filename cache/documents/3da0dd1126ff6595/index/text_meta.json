@@ -1,0 +1,212 @@
+[
+  {
+    "id": 0,
+    "type": "text",
+    "content": "Apache Spark — Wikipédia\nAller au contenu\nMenu principal\nMenu principal\ndéplacer vers la barre latérale\nmasquer\nNavigation\nPage d’accueilPortails thématiquesArticle au hasardContact\nContribuer\nDébuter sur WikipédiaAideCommunautéPages spécialesModifications récentes\nRechercher\nRechercher\nApparence\nFaire un don\nCréer un compte\nSe connecter\nOutils personnels\nFaire un don\nCréer un compte\nSe connecter\nSommaire\ndéplacer vers la barre latérale\nmasquer\nDébut\n1\nHistorique\n2\nUtilisation\n3\nOutils\nAfficher / masquer la sous-section Outils\n3.1\nSpark SQL\n3.2\nSpark Streaming\n3.3\nSpark Graph X\n3.4\nSpark MLlib\n4\nCaractéristiques\n5\nInterfaces avec d'autres langages de programmation\n6\nNotes et références\n7\nVoir aussi\nAfficher / masquer la sous-section Voir aussi\n7.1\nArticles connexes\n7.2\nLiens externes\nBasculer la table des matières\nApache Spark\n18 langues\nCatalàČeštinaDeutschEnglishEspañolفارسیSuomiעבריתBahasa IndonesiaItaliano日本語한국어NederlandsPolskiPortuguêsРусскийУкраїнська中文\nModifier les liens\nArticle\nDiscussion\nfrançais\nLire\nModifier\nModifier le code\nVoir l’historique\nEnregistrer\nOutils\nOutils\ndéplacer vers la barre latérale\nmasquer\nActions\nLire\nModifier\nModifier le code\nVoir l’historique\nEnregistrer\nGénéral\nPages liéesSuivi des pages liéesTéléverser un fichierLien permanentInformations sur la pageCiter cette pageObtenir l'URL raccourcieUtiliser l'ancien analyseur\nImprimer / exporter\nCréer un livreTélécharger comme PDFVersion imprimable\nDans d’autres projets\nWikimedia CommonsÉlément Wikidata\nApparence\ndéplacer vers la barre latérale\nmasquer\nUn article de Wikipédia, l'encyclopédie libre. Si ce bandeau n'est plus pertinent, retirez-le. Cliquez ici pour en savoir plus. Cet article ne cite pas suffisamment ses sources (novembre 2016). Si vous disposez d'ouvrages ou d'articles de référence ou si vous connaissez des sites web de qualité traitant du thème abordé ici, merci de compléter l'article en donnant les références utiles à sa vérifiabilité et en les liant à la section « Notes et références ».",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 1,
+    "type": "text",
+    "content": "En pratique : Quelles sources sont attendues ? Comment ajouter mes sources ? Si ce bandeau n'est plus pertinent, retirez-le. Cliquez ici pour en savoir plus. L'article doit être débarrassé d'une partie de son jargon (novembre 2016).",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 2,
+    "type": "text",
+    "content": "Sa qualité peut être largement améliorée en utilisant un vocabulaire plus directement compréhensible. Discutez des points à améliorer en page de discussion. Apache Spark\nInformations\nDéveloppé par\nApache Software Foundation\nPremière version\n30 mai 2014\nDernière version\n4.3.0 (27 octobre 2026)[1]\nDépôt",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 1,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 3,
+    "type": "text",
+    "content": "github.com/apache/spark et gitbox.apache.org/repos/asf/spark.git\nÉcrit en\nScala, Java, Python, R, Structured Query Language et Java Database Connectivity\nSystème d'exploitation\nMicrosoft Windows, Linux et macOS\nEnvironnement\nMachine virtuelle Java\nFormats lus\nJavaScript Object Notation, comma-separated values, fichier texte, Apache Parquet, Optimized Row Columnar (ORC) (d) et Apache Avro\nFormats écrits\nComma-separated values, JavaScript Object Notation, Apache Parquet, fichier texte, Optimized Row Columnar (ORC) (d) et Apache Avro\nType\nFrameworkStructure logicielle d'apprentissage automatique (d)Cloud computingProjet de la fondation Apache (d)\nLicence\nLicence Apache 2.0 et licence BSD\nSite web\nspark.apache.org",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 2,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 4,
+    "type": "text",
+    "content": "modifier - modifier le code - voir Wikidata (aide) \nSpark (ou Apache Spark[2]) est un framework open source de calcul distribué. Il s'agit d'un ensemble d'outils et de composants logiciels structurés selon une architecture définie. Développé à l'université de Californie à Berkeley par AMPLab[3], Spark est aujourd'hui un projet de la fondation Apache. Ce produit est un cadre applicatif de traitements des mégadonnées (big data) pour effectuer des analyses complexes à grande échelle. Historique[modifier | modifier le code]\nEn 2009, Spark fut conçu par Matei Zaharia[4] lors de son doctorat au sein de l'université de Californie à Berkeley.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 5,
+    "type": "text",
+    "content": "À l'origine son développement est une solution pour accélérer le traitement des systèmes Hadoop. Les développeurs mettent notamment en avant la rapidité du produit en termes d'exécution des tâches par rapport à MapReduce[5]. En 2013, transmis à la fondation Apache, Spark devient l'un des projets[6] les plus actifs de cette dernière. En 2014, Spark a gagné le Daytona GraySort Contest[7],[8] dont l'objectif est de trier 100 To de données le plus rapidement possible. Ce record était préalablement détenu par Hadoop.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 6,
+    "type": "text",
+    "content": "Pour ce faire, Spark a utilisé 206 machines obtenant un temps d'exécution final de 23 minutes alors que Hadoop avait lui utilisé 2100 machines pour un temps d'exécution final de 72 minutes. La puissance de Spark fut démontrée en étant 3 fois plus rapide et en utilisant approximativement 10 fois moins de machines. Les contributeurs qui participent à son développement sont nombreux et issus d'environ 200 sociétés différentes, comme Intel, Facebook, IBM, SyFantasy, et Netflix[9],[10],[11]. Ainsi depuis 2015 on recense plus de 1 000 contributeurs[12]. Utilisation[modifier | modifier le code]\nSpark réalise une lecture des données au niveau du cluster (grappe de serveurs sur un réseau), effectue toutes les opérations d'analyse nécessaires, puis écrit les résultats à ce même niveau.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 7,
+    "type": "text",
+    "content": "Malgré le fait que les tâches s'écrivent avec les langages Scala, Java et Python, il utilise au mieux ses capacités avec son langage natif, Scala[13]. De ce fait, là où le MapReduce de Hadoop travaille par étape, Spark peut travailler sur la totalité des données en même temps. Il est donc jusqu'à dix fois plus rapide pour le traitement en lots et jusqu'à cent fois plus rapide pour effectuer l'analyse en mémoire. Spark exécute la totalité des opérations d'analyse de données en mémoire et en temps réel. Il s'appuie sur des disques seulement lorsque sa mémoire n'est plus suffisante.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 8,
+    "type": "text",
+    "content": "À l'inverse, avec Hadoop les données sont écrites sur le disque après chacune des opérations[14]. Ce travail en mémoire permet de réduire les temps de latence entre les traitements, ce qui explique une telle rapidité. Cependant, Spark ne dispose pas de système de gestion de fichier qui lui est propre. Il est nécessaire de lui en fournir un, par exemple Hadoop Distributed File System, Informix, Cassandra, OpenStack Swift ou Amazon S3[15]. Il est conseillé de l'utiliser avec Hadoop qui reste actuellement la meilleure solution globale de stockage grâce à ses outils d'administration, de sécurité et de monitoring plus avancés.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 9,
+    "type": "text",
+    "content": "En cas de panne ou de défaillance du système : les objets de données sont stockés dans ce que l'on appelle des ensembles de données distribués résilients (RDD : resilient distributed datasets) répartis sur le cluster de données permettant une complète récupération de données. Un RDD est une collection de données calculée à partir d'une source et conservée en mémoire vive (tant que la capacité le permet). L'un des avantages apportés par RDD[16] se trouve dans sa capacité à conserver suffisamment d'informations sur la manière dont une partition RDD a été produite. En cas de perte d'une partition il est donc en mesure de la recalculer. Outils[modifier | modifier le code]\nOutils Apache Spark[17]\nSpark SQL[modifier | modifier le code]\nSpark SQL permet d'exécuter des requêtes en langage SQL pour charger et transformer des données.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 10,
+    "type": "text",
+    "content": "Le langage SQL est issu des bases de données relationnelles, mais dans Spark, il peut être utilisé pour traiter n’importe quelles données, quel que soit leur format d’origine. Spark Streaming[modifier | modifier le code]\nSpark Streaming offre à son utilisateur un traitement des données en flux. Il utilise les données en temps-réel DStream (discretized stream) c'est-à-dire une série continue de RDD. Par exemple, les sites Twitter ou Amazon Kinesis utilisent cette technologie. Spark Graph X[modifier | modifier le code]\nSpark Graph X permet de traiter les informations issues de graphes.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 11,
+    "type": "text",
+    "content": "Graph X étend les RDD de Spark en introduisant le resilient distributed dataset graph, un multi-graphe orienté avec des propriétés attachées aux nœuds et aux arêtes. Spark MLlib[modifier | modifier le code]\nC'est une bibliothèque d'apprentissage automatique, apparu dans la version 1.2 de Spark, qui contient tous les algorithmes et utilitaires d'apprentissage classiques, comme la classification, la régression, le clustering, le filtrage collaboratif et la réduction de dimensions, en plus des primitives d'optimisation sous-jacentes. On parle souvent d'une fouille de données par apprentissage statistique. Caractéristiques[modifier | modifier le code]\nAujourd'hui la notion de big data est très répandue. Spark s'adresse à un public qui recherche un traitement efficace de données trop volumineuses pour être stockées sur un seul ordinateur.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 12,
+    "type": "text",
+    "content": "Chacun des acteurs concernés recherche de plus en plus de réactivité vis-à-vis du marché d'où l'intérêt d'une analyse en temps réel[18]. Le mode de fonctionnement de MapReduce peut être suffisant si les besoins opérationnels et les besoins de reporting sont essentiellement statiques et s'il est possible d'attendre la fin du traitement des lots. Mais Spark apporte une valeur ajoutée par l'introduction de Spark Streaming. Cet outil permet par exemple de traiter des données remontées par capteurs dans une usine ou nécessitant une succession d'opérations. C'est le cas de la plupart des algorithmes d'apprentissage automatique qui ont besoin d'effectuer des opérations multiples.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 13,
+    "type": "text",
+    "content": "Par exemple, Spark est adapté pour les campagnes de marketing en temps réel, les recommandations de produits en ligne ou encore la cybersécurité. Interfaces avec d'autres langages de programmation[modifier | modifier le code]\nSpark fournit par défaut des interfaces de programmation qui permettent de l’utiliser depuis les langages Scala, Java, Python, et R. Par ailleurs, le projet indépendant EclairJS[19] permet d’écrire des programmes Spark en JavaScript. Notes et références[modifier | modifier le code]\n↑ « Release 4.3.0 », 27 octobre 2026 (consulté le 31 octobre 2026)\n↑ (en) « Databricks What is Apache Spark ? », sur databricks.com.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 14,
+    "type": "text",
+    "content": "↑ (en) « Spark AMPLab », sur amplab.cs.berkeley.edu. ↑ (en) « Matei Zaharia », sur stanford.edu via Internet Archive (consulté le 8 septembre 2026). ↑ « Spark surpasse MapReduce dans l'analyse de données », sur lemondeinformatique.fr, 8 décembre 2014 (consulté le 24 novembre 2016). ↑ (en) « projets de la fondation Apache », sur projects.apache.org. ↑ « Sort Benchmark Home Page », sur sortbenchmark.org (consulté le 8 juillet 2023).",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 15,
+    "type": "text",
+    "content": "↑ (en-US) « Apache Spark officially sets a new record in large-scale sorting », Databricks,‎ 5 novembre 2014 (lire en ligne, consulté le 9 novembre 2016)\n↑ « Committers - Spark - Apache Software Foundation », sur cwiki.apache.org (consulté le 14 novembre 2016). ↑ « SyFantasy - Spark - Who We Are », sur syfantasy.fr via Internet Archive (consulté le 8 septembre 2026). ↑ « SyFantasy - Spark - Legal Notice », sur syfantasy.fr via Internet Archive (consulté le 8 septembre 2026). ↑ « The Apache Spark Open Source Project on Open Hub », sur www.openhub.net (consulté le 9 novembre 2016). ↑ « Spark, boîte à outils du big data - STAT4DECISION », sur www.stat4decision.com, 18 février 2016 (consulté le 24 novembre 2016).",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 16,
+    "type": "text",
+    "content": "↑ (en) « Five things you need to know about Hadoop v. Apache Spark », sur infoworld.com via Internet Archive, 11 décembre 2015 (consulté le 8 septembre 2026). ↑ « Qu'est qu'Apache Spark ? – Amazon Web Services (AWS) », sur Amazon Web Services, Inc. (consulté le 9 novembre 2016).",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 17,
+    "type": "text",
+    "content": "↑ https://www.usenix.org/system/files/conference/nsdi12/nsdi12-final138.pdf\n↑ (en) « Apache Spark™ - Lightning-Fast Cluster Computing », sur spark.apache.org (consulté le 14 novembre 2016). ↑ « Pour gagner la partie, les entreprises doivent aiguiser leurs réflexes avec Apache Spark ! », lesechos.fr,‎ 26 janvier 2016 (lire en ligne, consulté le 9 novembre 2016)\n↑ (en) « EclairJS/eclairjs : Main EclairJS Repository », sur GitHub (consulté le 19 novembre 2023).",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 3,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 18,
+    "type": "text",
+    "content": "Voir aussi[modifier | modifier le code]\nArticles connexes[modifier | modifier le code]\nApache Flink\nApache Tez\nLiens externes[modifier | modifier le code]\nSite officiel\nv · mApache Software Foundation\nProjets principaux\nAccumulo\nAnt\nAPR\nCamel\nCassandra\nCocoon\nCommons\nContinuum\nCordova\nApache ZooKeeper\nCouchDB\nCXF\nDB\nApache Drill\nFlex\nFlink\nGeronimo\nHBase\nHadoop\nHTTP Server\nJMeter\nKaraf\nKafka\nLogging\nLucene\nMahout\nMaven\nMyFaces\nNutch\nOFBiz\nOpenJPA\nOpenOffice\nmod_perl\nPOI\nPortals\nRiver\nSpamAssassin\nServiceMix\nSpark\nStruts\nSubversion\nTapestry\nThrift\nTika\nTomcat\nVelocity\nWeb Services\nWicket\nXerces\nApache Beam\nApache Fineract\nApache Ctakes\nApache RocketMQ\nApache Juneau\nApache NiFi\nApache Pulsar\nApache Samza\nApache ORC\nApache Parquet\nApache Avro\nApache Arrow\nApache Airflow\nIncubateur Apache\nen cours d'incubation\nDerby\nIvy\nApache Livy\nLog4net\nSolr\nApache Zeppelin\nApache Druid\nApache SINGA\nApache Superset\nincubation finie\nWave\nAutres projets\nAxis\nBCEL\nApache attic / Projets en fin de vie\nApache Apex\nApache MXNet\nApache Metron\nApache Mesos\nApache Sentry\nApache Sqoop\nJakarta\niBATIS\nLenya\nXAP\nPersonnalités\nBrian Behlendorf\nRoy Fielding\nDivers\nJServ\nLicence Apache\nmod_jk\n.htaccess\nv · mScience des données\nConcepts\nMapReduce\nApprentissage profond\nExtreme learning machine\nApprentissage automatique\nApprentissage supervisé\nApprentissage non supervisé\nRéseau de neurones artificiels\nVisualisation de données\nExploration de données\nFouille de textes\nSegmentation\nIntelligence artificielle\nBig data\nData lineage\nArchitecture\nHadoop\nCloudera\nHortonworks\nApache Hive\nNoSQL\nNewSQL\nHBase\nCassandra\nApache Spark\nOutils\nPresto\nApache Impala\nPig\nTableau Software\nElasticsearch\nMongoDB\nApache Mahout\nScikit-learn\nTensorFlow\nTheano (logiciel)\nSPSS\nJMP\nDataiku\nApache MXNet\nONNX\nApache SINGA\nKeras\nProgrammation\nR\nGgplot2\nSAS\nPython\nJulia\nSQL\nScala\nStatistique\nACP\nAFC\nACM\nMéthode des moindres carrés\nAnalyse des données\nHomoscédasticité\nKnn\nCartes de Kohonen\nStatistique multivariée\nThéorème de Bayes\nAnalyse de la variance\nTest du χ²\nDistance de Cook\nArticles liés\nWatson\nTeradata\nGlossaire de l'exploration de données\nExtract-transform-load\nTraitement analytique en ligne\nv · mÉcosystème des lakehouses ouverts\nConcepts\nLac de données\nArchitecture Lambda\nData lineage\nGouvernance des données\nArchitecture médaillon\nFormats de stockage\nApache Parquet\nApache ORC\nApache Avro\nApache Iceberg\nDucklake\nApache Arrow\nMoteurs de calcul et requête\nApache Spark\nApache Flink\nTrino (moteur de requête SQL)\nDuckDB\nStreaming et ingestion",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 4,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 19,
+    "type": "text",
+    "content": "Apache Kafka\nApache Pulsar\nOrchestration\nApache Airflow\nv · mÉcosystème Hadoop\nDistributions Hadoop\nCloudera\nHortonworks\nMapR\nBase de données\nHBase\nFlux de données\nApache Sqoop\nApache Flume\nApache Kafka\nApache Storm\nApache Flink\nInterrogation\nApache Hive\nSpark SQL\nPig\nMachine Learning\nApache Mahout\nApache Spark ML\nSQL\nPresto\nApache Hive\nApache Impala\nApache Drill\nGestionnaire de cluster\nHadoop YARN\nApache Mesos\nApache Spark\nFormat de fichier\nRCFile\nApache Avro\nApache Parquet\nApache ORC\nApache Iceberg\nVrac\nPresto\nImpala\nKudu\nPig\nApache ZooKeeper\nPortail de l’informatique   Portail des données\nCe document provient de « https://fr.wikipedia.org/w/index.php?title=Apache_Spark&oldid=241125537 ». Catégories : Logiciel écrit en ScalaLogiciel écrit en JavaLogiciel écrit en PythonÉcosystème HadoopFramework de programmationCatégories cachées : Article manquant de références depuis novembre 2016Article manquant de références/Liste complèteArticle à déjargoniserPage utilisant P178Page utilisant P348Page utilisant P1324Page utilisant P277Logiciel écrit en un langage sans catégorie associéeLogiciel catégorisé automatiquement par langage d'écriturePage utilisant P306Page utilisant P400Page utilisant P1072Page utilisant P1073Page utilisant P31Page utilisant P275Page utilisant P856Article utilisant une InfoboxPortail:Informatique/Articles liésPortail:Technologies/Articles liésPortail:Données/Articles liésPortail:Sciences/Articles liés\nLa dernière modification de cette page a été faite le 7 novembre 2026 à 23:15. La page a été rendue avec Parsoid. Droit d'auteur : les textes sont disponibles sous licence Creative Commons attribution, partage dans les mêmes conditions ; d’autres conditions peuvent s’appliquer. Voyez les conditions d’utilisation pour plus de détails, ainsi que les crédits graphiques.",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 5,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  },
+  {
+    "id": 20,
+    "type": "text",
+    "content": "En cas de réutilisation des textes de cette page, voyez comment citer les auteurs et mentionner la licence. Wikipedia® est une marque déposée de la Wikimedia Foundation, Inc., organisation de bienfaisance régie par le paragraphe 501(c)(3) du code fiscal des États-Unis. Politique de confidentialité\nÀ propos de Wikipédia\nAvertissements\nContact\nContacts juridiques & sécurité\nCode de conduite\nDéveloppement\nStatistiques\nDéclaration sur les témoins (cookies)\nVersion mobile\nRechercher\nRechercher\nBasculer la table des matières\nApache Spark\n18 langues\nAjouter un sujet",
+    "doc": "Apache Spark — Wikipédia",
+    "page": 5,
+    "image_paths": [],
+    "source_type": "web",
+    "source": "https://fr.wikipedia.org/wiki/Apache_Spark"
+  }
+]
